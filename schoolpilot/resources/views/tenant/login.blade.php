@@ -21,7 +21,7 @@
             <div class="error">{{ $errors->first() }}</div>
         @endif
 
-        <form method="POST" action="/school/greenfield/dashboard">
+        <form method="POST" action="/school/greenfield/login">
     @csrf
     <!-- rest of the form -->
             <input type="email" name="email" placeholder="Email Address" required>

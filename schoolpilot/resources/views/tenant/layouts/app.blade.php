@@ -16,10 +16,10 @@
             </div>
             <nav class="flex-1 p-4 space-y-2">
                 <a href="/school/greenfield/dashboard" class="block px-4 py-2 bg-blue-800 rounded">Dashboard</a>
-                <a href="#" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Students</a>
-                <a href="#" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Staff</a>
-                <a href="#" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Classes & Subjects</a>
-                <a href="#" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Results</a>
+                <a href="/school/greenfield/students" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Students</a>
+                <a href="/school/greenfield/staff" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Staff</a>
+                <a href="/school/greenfield/academic" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Classes & Subjects</a>
+               <a href="/school/greenfield/results" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Results</a>
                 <a href="#" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Settings</a>
             </nav>
         </aside>

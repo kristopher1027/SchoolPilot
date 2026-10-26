@@ -6,23 +6,23 @@
         <p class="text-gray-600">Here is what is happening at Greenfield Academy today.</p>
     </div>
 
-    <!-- Quick Stats Grid -->
+        <!-- Quick Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div class="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
             <h4 class="text-sm font-medium text-gray-500">Total Students</h4>
-            <p class="text-3xl font-bold text-blue-900">0</p>
+            <p class="text-3xl font-bold text-blue-900">{{ $totalStudents }}</p>
         </div>
         <div class="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
             <h4 class="text-sm font-medium text-gray-500">Total Staff</h4>
-            <p class="text-3xl font-bold text-green-900">1</p>
+            <p class="text-3xl font-bold text-green-900">{{ $totalStaff }}</p>
         </div>
         <div class="bg-white p-6 rounded-lg shadow border-l-4 border-purple-500">
-            <h4 class="text-sm font-medium text-gray-500">Current Session</h4>
-            <p class="text-lg font-bold text-purple-900">Not Set</p>
+            <h4 class="text-sm font-medium text-gray-500">Total Classes</h4>
+            <p class="text-3xl font-bold text-purple-900">{{ $totalClasses }}</p>
         </div>
         <div class="bg-white p-6 rounded-lg shadow border-l-4 border-orange-500">
-            <h4 class="text-sm font-medium text-gray-500">Pending Results</h4>
-            <p class="text-3xl font-bold text-orange-500">0</p>
+            <h4 class="text-sm font-medium text-gray-500">Current Session</h4>
+            <p class="text-lg font-bold text-orange-500">{{ $currentSession ? $currentSession->name : 'Not Set' }}</p>
         </div>
     </div>
 
