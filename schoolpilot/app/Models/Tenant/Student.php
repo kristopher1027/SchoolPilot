@@ -26,4 +26,9 @@ class Student extends Model
     {
         return $this->belongsTo(SchoolClass::class, 'class_id');
     }
+
+    public function resultApprovals()
+    {
+        return $this->hasMany(ResultApproval::class);
+    }
 }

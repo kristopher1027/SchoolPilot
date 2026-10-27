@@ -14,20 +14,23 @@
 
     <div class="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-lg">
         
-        <!-- Print Button -->
         <div class="no-print mb-6 flex justify-between">
             <a href="javascript:history.back()" class="text-blue-600 hover:underline">&larr; Back to Results</a>
             <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded shadow">Print / Save as PDF</button>
         </div>
 
-        <!-- Header -->
+        @if($approval)
+            <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-800 p-4 mb-6 no-print text-center">
+                Current Status: <strong>{{ strtoupper(str_replace('_', ' ', $approval->status)) }}</strong>
+            </div>
+        @endif
+
         <div class="text-center border-b-2 border-gray-800 pb-4 mb-6">
             <h1 class="text-3xl font-bold text-gray-800">GREENFIELD ACADEMY</h1>
             <p class="text-sm text-gray-500">123 School Road, Lagos, Nigeria</p>
             <h2 class="text-xl font-semibold text-gray-700 mt-2">TERM REPORT CARD</h2>
         </div>
 
-        <!-- Student Info -->
         <div class="grid grid-cols-2 gap-4 mb-6 text-sm">
             <div>
                 <p><strong>Student Name:</strong> {{ $student->last_name }}, {{ $student->first_name }} {{ $student->middle_name }}</p>
@@ -41,7 +44,6 @@
             </div>
         </div>
 
-        <!-- Subject Table -->
         <table class="min-w-full divide-y divide-gray-300 border border-gray-300 mb-6">
             <thead class="bg-gray-100">
                 <tr>
@@ -70,7 +72,6 @@
             </tfoot>
         </table>
 
-        <!-- Signatures -->
         <div class="mt-12 flex justify-between text-sm text-gray-500">
             <div class="border-t border-gray-400 pt-2 w-40 text-center">Class Teacher</div>
             <div class="border-t border-gray-400 pt-2 w-40 text-center">Principal</div>
