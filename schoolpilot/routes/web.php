@@ -9,7 +9,6 @@ use App\Http\Controllers\Tenant\TeacherController;
 use App\Http\Controllers\Tenant\AssignmentController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
-use App\Http\Middleware\UseSchoolDatabase;
 use App\Models\Tenant\AcademicSession;
 use App\Models\Tenant\SchoolClass;
 use App\Models\Tenant\Student;
