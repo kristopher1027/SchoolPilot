@@ -84,7 +84,7 @@ return [
     */
 
     'database' => [
-        'central_connection' => env('DB_CONNECTION', 'central'),
+        'central_connection' => env('TENANCY_CENTRAL_CONNECTION', 'central_sqlite'),
 
         'template_tenant_connection' => 'tenant',
 

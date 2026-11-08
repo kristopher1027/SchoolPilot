@@ -13,17 +13,53 @@ class UseSchoolDatabase
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (! $request->is('school/greenfield/*')) {
+        $schoolSlug = $request->route('school');
+
+        if (! is_string($schoolSlug)) {
             return $next($request);
         }
 
-        $previousDefault = Config::get('database.default');
-        $previousGuard = Auth::getDefaultDriver();
-        $tenantDatabase = database_path('tenants/greenfield.sqlite');
+        if (! preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $schoolSlug)) {
+            abort(404);
+        }
+
+        // Tenant metadata lives in the central SQLite database. Never derive
+        // a filesystem path from unchecked request input.
+        $tenant = DB::connection('central_sqlite')
+            ->table('tenants')
+            ->where('data->slug', $schoolSlug)
+            ->first();
+
+        if (! $tenant && $schoolSlug === 'greenfield') {
+            // Backward-compatible mapping for the original school database.
+            // New schools must have a central tenant registry record.
+            $metadata = ['status' => 'active', 'db_name' => 'greenfield.sqlite'];
+        } elseif (! $tenant) {
+            abort(404, 'School not found.');
+        } else {
+            $metadata = json_decode($tenant->data ?? '{}', true, 512, JSON_THROW_ON_ERROR);
+        }
+
+        if (($metadata['status'] ?? 'active') !== 'active') {
+            abort(403, 'This school account is not active.');
+        }
+
+        $databaseName = $metadata['db_name'] ?? ($schoolSlug . '.sqlite');
+
+        // Only allow a plain SQLite filename; path traversal and directories
+        // are deliberately rejected.
+        if (! is_string($databaseName) || ! preg_match('/^[a-zA-Z0-9_-]+\.sqlite$/', $databaseName)) {
+            abort(503, 'The school database configuration is invalid.');
+        }
+
+        $tenantDatabase = database_path('tenants/' . $databaseName);
 
         if (! is_file($tenantDatabase)) {
             abort(503, 'The school database is currently unavailable.');
         }
+
+        $previousDefault = Config::get('database.default');
+        $previousGuard = Auth::getDefaultDriver();
 
         Config::set('database.connections.tenant_sqlite.database', $tenantDatabase);
         Config::set('database.default', 'tenant_sqlite');
