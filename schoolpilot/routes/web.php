@@ -21,7 +21,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::prefix('school/greenfield')->group(function () {
+Route::prefix('school/{school}')->group(function () {
         Route::get('/login', function () {
             return view('tenant.login');
         });
@@ -46,10 +46,10 @@ Route::prefix('school/greenfield')->group(function () {
             $user = Auth::guard('school')->user();
 
             if (in_array($user->role, ['class_teacher', 'subject_teacher'], true)) {
-                return redirect('/school/greenfield/teacher-dashboard');
+                return redirect('/school/' . $request->route('school') . '/teacher-dashboard');
             }
 
-            return redirect('/school/greenfield/dashboard');
+            return redirect('/school/' . $request->route('school') . '/dashboard');
         })->middleware('throttle:5,1');
 
         Route::middleware(['auth:school', EnsureActiveUser::class])->group(function () {
@@ -58,7 +58,7 @@ Route::prefix('school/greenfield')->group(function () {
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                return redirect('/school/greenfield/login');
+                return redirect('/school/' . $request->route('school') . '/login');
             });
 
             Route::get('/dashboard', function () {
