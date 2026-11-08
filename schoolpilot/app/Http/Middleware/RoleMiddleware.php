@@ -11,7 +11,7 @@ class RoleMiddleware
 {
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        $user = Auth::user();
+        $user = Auth::guard('school')->user();
 
         if (! $user || ! in_array($user->role, $roles, true)) {
             abort(403, 'You are not authorised to access this area.');

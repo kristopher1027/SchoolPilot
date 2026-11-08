@@ -12,9 +12,9 @@ class EnsureActiveUserTest extends TestCase
 {
     public function test_active_user_can_continue(): void
     {
-        Auth::shouldReceive('user')
-            ->once()
-            ->andReturn((object) ['is_active' => true]);
+        $guard = \Mockery::mock();
+        $guard->shouldReceive('user')->once()->andReturn((object) ['is_active' => true]);
+        Auth::shouldReceive('guard')->once()->with('school')->andReturn($guard);
 
         $response = (new EnsureActiveUser())->handle(
             Request::create('/school/greenfield/dashboard'),
@@ -28,12 +28,10 @@ class EnsureActiveUserTest extends TestCase
     {
         $this->expectException(HttpException::class);
 
-        Auth::shouldReceive('user')
-            ->once()
-            ->andReturn((object) ['is_active' => false]);
-
-        Auth::shouldReceive('logout')
-            ->once();
+        $guard = \Mockery::mock();
+        $guard->shouldReceive('user')->once()->andReturn((object) ['is_active' => false]);
+        $guard->shouldReceive('logout')->once();
+        Auth::shouldReceive('guard')->once()->with('school')->andReturn($guard);
 
         (new EnsureActiveUser())->handle(
             Request::create('/school/greenfield/dashboard'),
@@ -45,9 +43,10 @@ class EnsureActiveUserTest extends TestCase
     {
         $this->expectException(HttpException::class);
 
-        Auth::shouldReceive('user')
-            ->once()
-            ->andReturn(null);
+        $guard = \Mockery::mock();
+        $guard->shouldReceive('user')->once()->andReturn(null);
+        $guard->shouldReceive('logout')->once();
+        Auth::shouldReceive('guard')->once()->with('school')->andReturn($guard);
 
         (new EnsureActiveUser())->handle(
             Request::create('/school/greenfield/dashboard'),
