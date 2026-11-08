@@ -12,7 +12,7 @@ class UseSchoolDatabase
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $previousDefault = Config::get('database.default');
+        $previousDefault = Config::get('database.default');\n        $previousGuard = Auth::getDefaultDriver();
         $tenantDatabase = database_path('tenants/greenfield.sqlite');
 
         if (! is_file($tenantDatabase)) {
@@ -22,14 +22,14 @@ class UseSchoolDatabase
         Config::set('database.connections.tenant_sqlite.database', $tenantDatabase);
         Config::set('database.default', 'tenant_sqlite');
         DB::purge('tenant_sqlite');
-        DB::setDefaultConnection('tenant_sqlite');
+        DB::setDefaultConnection('tenant_sqlite');\n        Auth::shouldUse('school');
 
         try {
             return $next($request);
         } finally {
             DB::purge('tenant_sqlite');
             Config::set('database.default', $previousDefault);
-            DB::setDefaultConnection($previousDefault);
+            DB::setDefaultConnection($previousDefault);\n            Auth::shouldUse($previousGuard);
         }
     }
 }
