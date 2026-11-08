@@ -76,7 +76,7 @@ Route::prefix('school/greenfield')->group(function () {
                     'totalClasses',
                     'currentSession'
                 ));
-            });
+            })->middleware(RoleMiddleware::class . ':school_admin,principal,vice_principal,dean,hod,class_teacher,subject_teacher,bursar');
 
             Route::get('/teacher-dashboard', [TeacherController::class, 'dashboard'])
                 ->middleware(RoleMiddleware::class . ':class_teacher,subject_teacher');
