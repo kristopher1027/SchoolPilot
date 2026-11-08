@@ -10,7 +10,11 @@ return new class extends Migration
     {
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('school_id')->constrained('tenants')->cascadeOnDelete();
+            $table->string('school_id');
+            $table->foreign('school_id')
+                ->references('id')
+                ->on('tenants')
+                ->cascadeOnDelete();
             $table->string('plan');
             $table->decimal('amount', 12, 2);
             $table->date('starts_at');
