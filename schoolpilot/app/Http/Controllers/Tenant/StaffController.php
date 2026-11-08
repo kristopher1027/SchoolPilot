@@ -45,7 +45,7 @@ class StaffController extends Controller
             'role' => 'required|in:principal,vice_principal,dean,hod,class_teacher,subject_teacher,bursar',
             'staff_no' => 'required|unique:staff,staff_no',
             'designation' => 'nullable|string|max:255',
-            'date_hired' => 'required|date',
+            'date_hired' => 'required|date',\n            'password' => 'required|string|min:12|confirmed',
         ]);
 
         // 1. Create the User account first
@@ -53,7 +53,7 @@ class StaffController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'phone' => $data['phone'] ?? null,
-            'password' => Hash::make('password'), // Default password for all new staff
+            'password' => Hash::make($data['password']),
             'role' => $data['role'],
             'is_active' => true,
         ]);
