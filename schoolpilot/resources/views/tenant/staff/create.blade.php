@@ -44,6 +44,16 @@
                     </select>
                 </div>
 
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Initial Password</label>
+                    <input type="password" name="password" minlength="12" autocomplete="new-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    <p class="mt-1 text-xs text-gray-500">Use at least 12 characters. Share it securely and ask the staff member to change it.</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                    <input type="password" name="password_confirmation" minlength="12" autocomplete="new-password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+
                 <!-- Employment Info -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Staff Number</label>
