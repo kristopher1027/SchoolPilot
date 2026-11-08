@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\UseSchoolDatabase;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,10 +13,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust the Codespace Proxy
+        $middleware->redirectGuestsTo('/school/greenfield/login');
+
+        // Trust the Codespace proxy.
         $middleware->trustProxies(at: '*');
-        
-        // Allow API routes to bypass CSRF token verification
+
+        // Set the school database after the session starts but before route auth.
+        $middleware->web(append: [UseSchoolDatabase::class]);
+
+        // API routes use their own authentication mechanism.
         $middleware->validateCsrfTokens(except: [
             'api/*',
         ]);
