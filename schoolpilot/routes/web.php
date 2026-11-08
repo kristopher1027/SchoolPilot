@@ -22,9 +22,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::prefix('school/greenfield')
-    ->middleware(UseSchoolDatabase::class)
-    ->group(function () {
+Route::prefix('school/greenfield')->group(function () {
         Route::get('/login', function () {
             return view('tenant.login');
         });
