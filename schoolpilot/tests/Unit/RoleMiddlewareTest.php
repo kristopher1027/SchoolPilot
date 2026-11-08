@@ -12,9 +12,9 @@ class RoleMiddlewareTest extends TestCase
 {
     public function test_user_with_an_allowed_role_can_continue(): void
     {
-        Auth::shouldReceive('user')
-            ->once()
-            ->andReturn((object) ['role' => 'principal']);
+        $guard = \Mockery::mock();
+        $guard->shouldReceive('user')->once()->andReturn((object) ['role' => 'principal']);
+        Auth::shouldReceive('guard')->once()->with('school')->andReturn($guard);
 
         $response = (new RoleMiddleware())->handle(
             Request::create('/school/greenfield/staff'),
@@ -30,9 +30,9 @@ class RoleMiddlewareTest extends TestCase
     {
         $this->expectException(HttpException::class);
 
-        Auth::shouldReceive('user')
-            ->once()
-            ->andReturn((object) ['role' => 'student']);
+        $guard = \Mockery::mock();
+        $guard->shouldReceive('user')->once()->andReturn((object) ['role' => 'student']);
+        Auth::shouldReceive('guard')->once()->with('school')->andReturn($guard);
 
         (new RoleMiddleware())->handle(
             Request::create('/school/greenfield/staff'),
@@ -46,9 +46,9 @@ class RoleMiddlewareTest extends TestCase
     {
         $this->expectException(HttpException::class);
 
-        Auth::shouldReceive('user')
-            ->once()
-            ->andReturn(null);
+        $guard = \Mockery::mock();
+        $guard->shouldReceive('user')->once()->andReturn(null);
+        Auth::shouldReceive('guard')->once()->with('school')->andReturn($guard);
 
         (new RoleMiddleware())->handle(
             Request::create('/school/greenfield/staff'),
