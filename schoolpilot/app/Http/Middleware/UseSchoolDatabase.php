@@ -33,7 +33,8 @@ class UseSchoolDatabase
             DB::purge('tenant_sqlite');
             Config::set('database.default', $previousDefault);
             DB::setDefaultConnection($previousDefault);
-            Auth::forgetGuards();\n            Auth::shouldUse($previousGuard);
+            Auth::forgetGuards();
+            Auth::shouldUse($previousGuard);
         }
     }
 }
