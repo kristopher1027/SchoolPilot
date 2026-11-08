@@ -30,11 +30,15 @@ class UseSchoolDatabase
             ->where('data->slug', $schoolSlug)
             ->first();
 
-        if (! $tenant) {
+        if (! $tenant && $schoolSlug === 'greenfield') {
+            // Backward-compatible mapping for the original school database.
+            // New schools must have a central tenant registry record.
+            $metadata = ['status' => 'active', 'db_name' => 'greenfield.sqlite'];
+        } elseif (! $tenant) {
             abort(404, 'School not found.');
+        } else {
+            $metadata = json_decode($tenant->data ?? '{}', true, 512, JSON_THROW_ON_ERROR);
         }
-
-        $metadata = json_decode($tenant->data ?? '{}', true, 512, JSON_THROW_ON_ERROR);
 
         if (($metadata['status'] ?? 'active') !== 'active') {
             abort(403, 'This school account is not active.');
