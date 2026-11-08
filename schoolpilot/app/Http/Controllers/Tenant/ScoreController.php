@@ -13,19 +13,10 @@ use App\Models\Tenant\AcademicSession;
 use App\Models\Tenant\Term;
 use App\Models\Tenant\Staff;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class ScoreController extends Controller
 {
-    public function __construct()
-    {
-        Config::set('database.connections.tenant_sqlite.database', database_path('tenants/greenfield.sqlite'));
-        DB::purge('tenant_sqlite');
-        Config::set('database.default', 'tenant_sqlite');
-    }
-
     public function index()
     {
         $classes = SchoolClass::all();
