@@ -10,7 +10,8 @@ return new class extends Migration
     {
         Schema::create('provisioning_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('school_id')->nullable(); // We won't use strict foreign keys here so we can keep logs even if a school is deleted
+            // Tenant IDs are UUID strings; intentionally no FK so logs survive school deletion.
+            $table->string('school_id')->nullable();
             $table->foreignId('performed_by')->nullable();
             $table->enum('action', ['create', 'suspend', 'activate', 'migrate', 'impersonate']);
             $table->enum('status', ['success', 'failed'])->default('success');
