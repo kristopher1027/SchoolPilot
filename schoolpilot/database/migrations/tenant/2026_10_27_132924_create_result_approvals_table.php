@@ -8,25 +8,29 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('result_approvals', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('student_id')->constrained('students')->cascadeOnDelete();
-            $table->foreignId('class_id')->constrained('classes')->cascadeOnDelete();
-            $table->foreignId('term_id')->constrained('terms')->cascadeOnDelete();
-            $table->foreignId('academic_session_id')->constrained('academic_sessions')->cascadeOnDelete();
-            $table->string('status')->default('draft');
-            $table->foreignId('submitted_by')->nullable()->constrained('staff')->nullOnDelete();
-            $table->foreignId('class_teacher_approved_by')->nullable()->constrained('staff')->nullOnDelete();
-            $table->foreignId('hod_approved_by')->nullable()->constrained('staff')->nullOnDelete();
-            $table->foreignId('dean_approved_by')->nullable()->constrained('staff')->nullOnDelete();
-            $table->foreignId('published_by')->nullable()->constrained('staff')->nullOnDelete();
-            $table->text('rejection_reason')->nullable();
-            $table->timestamps();
+        // Earlier migrations create this table and then add student_id.
+        // Keep this migration safe for fresh and already-provisioned tenants.
+        if (! Schema::hasTable('result_approvals') || Schema::hasColumn('result_approvals', 'class_teacher_approved_by')) {
+            return;
+        }
+
+        Schema::table('result_approvals', function (Blueprint $table) {
+            $table->foreignId('class_teacher_approved_by')
+                ->nullable()
+                ->after('submitted_by')
+                ->constrained('staff')
+                ->nullOnDelete();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('result_approvals');
+        if (! Schema::hasTable('result_approvals') || ! Schema::hasColumn('result_approvals', 'class_teacher_approved_by')) {
+            return;
+        }
+
+        Schema::table('result_approvals', function (Blueprint $table) {
+            $table->dropConstrainedForeignId('class_teacher_approved_by');
+        });
     }
 };
