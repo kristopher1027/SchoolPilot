@@ -11,10 +11,11 @@ class EnsureActiveUser
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = Auth::user();
+        $guard = Auth::guard('school');
+        $user = $guard->user();
 
         if (! $user || ! (bool) $user->is_active) {
-            Auth::logout();
+            $guard->logout();
 
             abort(403, 'Your account is inactive. Contact your school administrator.');
         }
