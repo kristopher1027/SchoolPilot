@@ -9,19 +9,9 @@ use App\Models\Tenant\Subject;
 use App\Models\Tenant\AcademicSession;
 use App\Models\Tenant\Term;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 
 class AcademicController extends Controller
 {
-    public function __construct()
-    {
-        // Force the controller to use the greenfield database
-        Config::set('database.connections.tenant_sqlite.database', database_path('tenants/greenfield.sqlite'));
-        DB::purge('tenant_sqlite');
-        Config::set('database.default', 'tenant_sqlite');
-    }
-
     public function index()
     {
         $sessions = AcademicSession::with('terms')->get();
