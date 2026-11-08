@@ -11,11 +11,13 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {\n        $middleware->redirectGuestsTo('/school/greenfield/login');
-        // Trust the Codespace Proxy
+    ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->redirectGuestsTo('/school/greenfield/login');
+
+        // Trust the Codespace proxy.
         $middleware->trustProxies(at: '*');
-        
-        // Allow API routes to bypass CSRF token verification
+
+        // API routes use their own authentication mechanism.
         $middleware->validateCsrfTokens(except: [
             'api/*',
         ]);
