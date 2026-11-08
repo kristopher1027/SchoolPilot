@@ -15,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->redirectGuestsTo('/school/greenfield/login');
 
         // Trust the Codespace proxy.
-        $middleware->trustProxies(at: '*');
+        $middleware->trustProxies(at: '*');\n        $middleware->web(append: [UseSchoolDatabase::class]);
 
         // API routes use their own authentication mechanism.
         $middleware->validateCsrfTokens(except: [
