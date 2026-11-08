@@ -42,6 +42,10 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+        'school' => [
+            'driver' => 'session',
+            'provider' => 'school_users',
+        ],
     ],
 
     /*
@@ -62,6 +66,10 @@ return [
     */
 
     'providers' => [
+        'school_users' => [
+            'driver' => 'eloquent',
+            'model' => App\\Models\\Tenant\\User::class,
+        ],
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
