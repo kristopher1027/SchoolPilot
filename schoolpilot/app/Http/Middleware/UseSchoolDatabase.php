@@ -13,6 +13,10 @@ class UseSchoolDatabase
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if (! $request->is('school/greenfield/*')) {
+            return $next($request);
+        }
+
         $previousDefault = Config::get('database.default');
         $previousGuard = Auth::getDefaultDriver();
         $tenantDatabase = database_path('tenants/greenfield.sqlite');
