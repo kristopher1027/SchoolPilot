@@ -27,7 +27,7 @@ Route::prefix('school/greenfield')
     ->group(function () {
         Route::get('/login', function () {
             return view('tenant.login');
-        })->middleware('guest:school');
+        });
 
         Route::post('/login', function (Request $request) {
             $credentials = $request->validate([
