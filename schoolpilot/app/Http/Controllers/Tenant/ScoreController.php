@@ -54,7 +54,12 @@ class ScoreController extends Controller
         Term::whereKey($termId)->where('academic_session_id', $sessionId)->firstOrFail();
         $students = Student::where('class_id', $classId)->get();
         $sectionId = $class->section_id;
-        $components = AssessmentComponent::where('section_id', $sectionId)->where('type', '!=', 'observation')->get();
+        $components = AssessmentComponent::where('section_id', $sectionId)
+            ->where('type', '!=', 'observation')
+            ->where(function ($query) use ($subjectId) {
+                $query->whereNull('subject_id')->orWhere('subject_id', $subjectId);
+            })
+            ->get();
 
         $existingScores = ScoreEntry::where('class_id', $classId)
             ->where('subject_id', $subjectId)
@@ -94,7 +99,13 @@ class ScoreController extends Controller
             abort_unless(ctype_digit((string) $studentId) && Student::whereKey($studentId)->where('class_id', $class->id)->exists(), 422, 'A submitted student does not belong to this class.');
             abort_unless(is_array($componentScores), 422, 'Invalid score data.');
             foreach ($componentScores as $componentId => $score) {
-                abort_unless(ctype_digit((string) $componentId) && AssessmentComponent::whereKey($componentId)->where('section_id', $class->section_id)->where('type', '!=', 'observation')->exists(), 422, 'An assessment component does not belong to this class section.');
+                abort_unless(ctype_digit((string) $componentId) && AssessmentComponent::whereKey($componentId)
+                    ->where('section_id', $class->section_id)
+                    ->where('type', '!=', 'observation')
+                    ->where(function ($query) use ($validated) {
+                        $query->whereNull('subject_id')->orWhere('subject_id', $validated['subject_id']);
+                    })
+                    ->exists(), 422, 'An assessment component does not belong to this class section.');
                 if ($score !== null && $score !== '') {
                     $component = AssessmentComponent::findOrFail($componentId);
                     abort_unless(is_numeric($score) && $score >= 0 && $score <= $component->max_score, 422, 'A score is outside the allowed range.');
