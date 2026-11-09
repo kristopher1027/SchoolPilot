@@ -116,6 +116,6 @@ Route::prefix('school/{school}')->group(function () {
             });
 
             Route::post('/results/approve', [ResultController::class, 'approve'])
-                ->middleware(RoleMiddleware::class . ':school_admin,principal,vice_principal');
+                ->middleware(RoleMiddleware::class . ':school_admin,principal,vice_principal,dean,hod,class_teacher');
         });
     });
