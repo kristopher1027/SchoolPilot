@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect('/school/greenfield/login');
+    return view('landing');
 });
 
 Route::prefix('school/{school}')->group(function () {
