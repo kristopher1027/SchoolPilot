@@ -1,16 +1,16 @@
 <?php
 
-namespace Tests\\Unit;
+namespace Tests\Unit;
 
-use App\\Http\\Controllers\\Tenant\\ScoreController;
-use App\\Models\\Tenant\\Staff;
-use Illuminate\\Database\\Schema\\Blueprint;
-use Illuminate\\Support\\Facades\\Auth;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Facades\\Schema;
+use App\Http\Controllers\Tenant\ScoreController;
+use App\Models\Tenant\Staff;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use ReflectionMethod;
-use Symfony\\Component\\HttpKernel\\Exception\\HttpException;
-use Tests\\TestCase;
+use Symfony\Component\HttpKernel\Exception\HttpException;
+use Tests\TestCase;
 
 class ScoreTeacherAssignmentAuthorizationTest extends TestCase
 {
