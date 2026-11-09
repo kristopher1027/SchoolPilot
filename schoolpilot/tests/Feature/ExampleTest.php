@@ -1,9 +1,9 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Http\\Middleware\\UseSchoolDatabase;
-use Tests\\TestCase;
+use App\Http\Middleware\UseSchoolDatabase;
+use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
