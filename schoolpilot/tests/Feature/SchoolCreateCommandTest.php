@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Platform\ProvisioningLog;
+use App\Providers\TenancyServiceProvider;
 use Database\Seeders\Tenant\DatabaseSeeder as TenantDatabaseSeeder;
+use Stancl\Tenancy\Events;
 use Tests\TestCase;
 
 class SchoolCreateCommandTest extends TestCase
@@ -43,5 +45,14 @@ class SchoolCreateCommandTest extends TestCase
     public function test_provisioning_logs_use_the_central_database_connection(): void
     {
         $this->assertSame('central_sqlite', (new ProvisioningLog())->getConnectionName());
+    }
+
+    public function test_stancl_does_not_run_default_database_jobs_for_custom_tenant_provisioning(): void
+    {
+        $provider = new TenancyServiceProvider($this->app);
+        $listeners = $provider->events();
+
+        $this->assertSame([], $listeners[Events\TenantCreated::class]);
+        $this->assertSame([], $listeners[Events\TenantDeleted::class]);
     }
 }
