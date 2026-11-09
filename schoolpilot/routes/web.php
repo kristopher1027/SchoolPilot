@@ -15,46 +15,133 @@ use App\Models\Tenant\Student;
 use App\Models\Tenant\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('landing');
 });
 
-Route::prefix('school/{school}')->group(function () {
-        Route::get('/', function (string $school) {
-            return redirect('/school/' . $school . '/login');
-        });
+Route::get('/login', function () {
+    return view('tenant.login');
+})->middleware('guest:school');
 
-        Route::get('/login', function () {
-            return view('tenant.login');
-        });
+Route::post('/login', function (Request $request) {
+    $credentials = $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required', 'string'],
+    ]);
 
-        Route::post('/login', function (Request $request) {
-            $credentials = $request->validate([
-                'email' => ['required', 'email'],
-                'password' => ['required', 'string'],
-            ]);
+    $email = strtolower(trim($credentials['email']));
+    $matches = [];
 
-            if (! Auth::guard('school')->attempt(
-                [...$credentials, 'is_active' => true],
-                $request->boolean('remember')
-            )) {
-                return back()
-                    ->withErrors(['email' => 'Invalid credentials or inactive account.'])
-                    ->onlyInput('email');
+    // Read only registered, active tenant metadata from the central database.
+    $registeredTenants = DB::connection('central_sqlite')->table('tenants')->get(['data']);
+    foreach ($registeredTenants as $registeredTenant) {
+        $metadata = json_decode($registeredTenant->data ?? '{}', true);
+        if (! is_array($metadata)) {
+            continue;
+        }
+
+        $slug = $metadata['slug'] ?? null;
+        $databaseName = $metadata['db_name'] ?? null;
+        if (
+            ! is_string($slug) ||
+            ! preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) ||
+            ($metadata['status'] ?? 'active') !== 'active' ||
+            ! is_string($databaseName) ||
+            ! preg_match('/^[a-zA-Z0-9_-]+\.sqlite$/', $databaseName)
+        ) {
+            continue;
+        }
+
+        $databasePath = database_path('tenants/' . $databaseName);
+        if (! is_file($databasePath)) {
+            continue;
+        }
+
+        Config::set('database.connections.tenant_sqlite.database', $databasePath);
+        DB::purge('tenant_sqlite');
+
+        $user = DB::connection('tenant_sqlite')->table('users')
+            ->where('email', $email)
+            ->where('is_active', true)
+            ->first();
+
+        if ($user && Hash::check($credentials['password'], $user->password)) {
+            $matches[] = ['slug' => $slug, 'user_id' => $user->id, 'role' => $user->role];
+        }
+    }
+
+    // Keep support for the original Greenfield demo database before it is
+    // added to the central tenant registry.
+    if (! collect($registeredTenants)->contains(function ($tenant) {
+        $metadata = json_decode($tenant->data ?? '{}', true);
+        return is_array($metadata) && ($metadata['slug'] ?? null) === 'greenfield';
+    })) {
+        $legacyDatabase = database_path('tenants/greenfield.sqlite');
+        if (is_file($legacyDatabase)) {
+            Config::set('database.connections.tenant_sqlite.database', $legacyDatabase);
+            DB::purge('tenant_sqlite');
+
+            $user = DB::connection('tenant_sqlite')->table('users')
+                ->where('email', $email)
+                ->where('is_active', true)
+                ->first();
+
+            if ($user && Hash::check($credentials['password'], $user->password)) {
+                $matches[] = ['slug' => 'greenfield', 'user_id' => $user->id, 'role' => $user->role];
             }
+        }
+    }
 
-            $request->session()->regenerate();
+    if (count($matches) !== 1) {
+        DB::purge('tenant_sqlite');
+        Config::set('database.connections.tenant_sqlite.database', null);
 
+        return back()
+            ->withErrors(['email' => 'The email or password is incorrect, or the account is unavailable.'])
+            ->onlyInput('email');
+    }
+
+    $match = $matches[0];
+    $databasePath = database_path('tenants/' . $match['slug'] . '.sqlite');
+
+    // Resolve the registered database filename rather than trusting the URL slug.
+    foreach ($registeredTenants as $registeredTenant) {
+        $metadata = json_decode($registeredTenant->data ?? '{}', true);
+        if (is_array($metadata) && ($metadata['slug'] ?? null) === $match['slug']) {
+            $databasePath = database_path('tenants/' . $metadata['db_name']);
+            break;
+        }
+    }
+
+    Config::set('database.connections.tenant_sqlite.database', $databasePath);
+    DB::purge('tenant_sqlite');
+
+    $schoolUser = \App\Models\Tenant\User::query()->findOrFail($match['user_id']);
+    Auth::guard('school')->login($schoolUser, $request->boolean('remember'));
+    $request->session()->regenerate();
+    $request->session()->put('_school_authenticated_slug', $match['slug']);
+
+    DB::purge('tenant_sqlite');
+    Config::set('database.connections.tenant_sqlite.database', null);
+
+    return redirect('/school/' . $match['slug']);
+})->middleware('throttle:5,1');
+
+Route::prefix('school/{school}')->group(function () {
+        Route::middleware(['auth:school', EnsureActiveUser::class])->get('/', function () {
             $user = Auth::guard('school')->user();
 
             if (in_array($user->role, ['class_teacher', 'subject_teacher'], true)) {
-                return redirect('/school/' . $request->route('school') . '/teacher-dashboard');
+                return redirect('/school/' . request()->route('school') . '/teacher-dashboard');
             }
 
-            return redirect('/school/' . $request->route('school') . '/dashboard');
-        })->middleware('throttle:5,1');
+            return redirect('/school/' . request()->route('school') . '/dashboard');
+        });
 
         Route::middleware(['auth:school', EnsureActiveUser::class])->group(function () {
             Route::post('/logout', function (Request $request) {
