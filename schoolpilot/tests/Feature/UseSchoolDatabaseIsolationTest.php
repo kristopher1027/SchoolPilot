@@ -13,6 +13,10 @@ use Tests\TestCase;
 class UseSchoolDatabaseIsolationTest extends TestCase
 {
     private string $directory;
+    private string $tenantDirectory;
+    private string $alphaDatabaseName;
+    private string $betaDatabaseName;
+    private bool $tenantDirectoryCreated = false;
     private string $centralPath;
     private string $previousCentralPath;
     private string $previousTenantPath;
@@ -22,8 +26,18 @@ class UseSchoolDatabaseIsolationTest extends TestCase
     {
         parent::setUp();
 
-        $this->directory = sys_get_temp_dir() . '/schoolpilot-tenancy-' . bin2hex(random_bytes(6));
+        $token = bin2hex(random_bytes(6));
+        $this->directory = sys_get_temp_dir() . '/schoolpilot-tenancy-' . $token;
         mkdir($this->directory, 0700, true);
+
+        // The middleware intentionally resolves tenant files beneath database/tenants.
+        $this->tenantDirectory = database_path('tenants');
+        if (! is_dir($this->tenantDirectory)) {
+            mkdir($this->tenantDirectory, 0700, true);
+            $this->tenantDirectoryCreated = true;
+        }
+        $this->alphaDatabaseName = 'test-alpha-' . $token . '.sqlite';
+        $this->betaDatabaseName = 'test-beta-' . $token . '.sqlite';
 
         $this->centralPath = $this->directory . '/central.sqlite';
         touch($this->centralPath);
@@ -41,25 +55,25 @@ class UseSchoolDatabaseIsolationTest extends TestCase
             $table->timestamps();
         });
 
-        $this->createTenantDatabase('alpha.sqlite', 'Alpha School');
-        $this->createTenantDatabase('beta.sqlite', 'Beta School');
+        $this->createTenantDatabase($this->alphaDatabaseName, 'Alpha School');
+        $this->createTenantDatabase($this->betaDatabaseName, 'Beta School');
 
         DB::connection('central_sqlite')->table('tenants')->insert([
             [
                 'id' => 'alpha-id',
-                'data' => json_encode(['slug' => 'alpha', 'status' => 'active', 'db_name' => 'alpha.sqlite']),
+                'data' => json_encode(['slug' => 'alpha', 'status' => 'active', 'db_name' => $this->alphaDatabaseName]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 'id' => 'beta-id',
-                'data' => json_encode(['slug' => 'beta', 'status' => 'active', 'db_name' => 'beta.sqlite']),
+                'data' => json_encode(['slug' => 'beta', 'status' => 'active', 'db_name' => $this->betaDatabaseName]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 'id' => 'suspended-id',
-                'data' => json_encode(['slug' => 'suspended', 'status' => 'suspended', 'db_name' => 'alpha.sqlite']),
+                'data' => json_encode(['slug' => 'suspended', 'status' => 'suspended', 'db_name' => $this->alphaDatabaseName]),
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -80,6 +94,11 @@ class UseSchoolDatabaseIsolationTest extends TestCase
         Config::set('database.connections.tenant_sqlite.database', $this->previousTenantPath);
         DB::setDefaultConnection($this->previousDefault);
 
+        @unlink($this->tenantDirectory . '/' . $this->alphaDatabaseName);
+        @unlink($this->tenantDirectory . '/' . $this->betaDatabaseName);
+        if ($this->tenantDirectoryCreated) {
+            @rmdir($this->tenantDirectory);
+        }
         foreach (glob($this->directory . '/*.sqlite') ?: [] as $file) {
             @unlink($file);
         }
@@ -116,7 +135,7 @@ class UseSchoolDatabaseIsolationTest extends TestCase
 
     private function createTenantDatabase(string $filename, string $marker): void
     {
-        $path = $this->directory . '/' . $filename;
+        $path = $this->tenantDirectory . '/' . $filename;
         touch($path);
 
         Config::set('database.connections.tenant_sqlite.database', $path);
