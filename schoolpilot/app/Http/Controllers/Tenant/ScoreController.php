@@ -29,8 +29,8 @@ class ScoreController extends Controller
 
     public function entry(Request $request)
     {
-        if (!$request->has('class_id')) {
-            return redirect('/school/greenfield/scores');
+        if (! $request->filled('class_id')) {
+            return redirect('/school/' . $request->route('school') . '/scores');
         }
 
         $classId = $request->class_id;
@@ -38,8 +38,9 @@ class ScoreController extends Controller
         $termId = $request->term_id;
         $sessionId = $request->session_id;
 
+        $class = SchoolClass::findOrFail($classId);
         $students = Student::where('class_id', $classId)->get();
-        $sectionId = SchoolClass::find($classId)->section_id;
+        $sectionId = $class->section_id;
         $components = AssessmentComponent::where('section_id', $sectionId)->where('type', '!=', 'observation')->get();
 
         $existingScores = ScoreEntry::where('class_id', $classId)
@@ -60,15 +61,34 @@ class ScoreController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
-            'class_id' => 'required',
-            'term_id' => 'required',
-            'session_id' => 'required',
-            'scores' => 'required|array'
+        $validated = $request->validate([
+            'class_id' => ['required', 'integer', 'exists:classes,id'],
+            'subject_id' => ['required', 'integer', 'exists:subjects,id'],
+            'term_id' => ['required', 'integer', 'exists:terms,id'],
+            'session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
+            'scores' => ['required', 'array'],
         ]);
 
+        $class = SchoolClass::findOrFail($validated['class_id']);
+        abort_unless(Subject::whereKey($validated['subject_id'])->where('section_id', $class->section_id)->exists(), 422, 'The selected subject does not belong to this class section.');
+        Term::whereKey($validated['term_id'])->where('academic_session_id', $validated['session_id'])->firstOrFail();
         $staff = Staff::where('user_id', Auth::id())->first();
-        $staffId = $staff ? $staff->id : 1;
+        abort_unless($staff, 403, 'Your staff profile is required to enter scores.');
+        $staffId = $staff->id;
+
+        foreach ($request->scores as $studentId => $componentScores) {
+            abort_unless(ctype_digit((string) $studentId) && Student::whereKey($studentId)->where('class_id', $class->id)->exists(), 422, 'A submitted student does not belong to this class.');
+            abort_unless(is_array($componentScores), 422, 'Invalid score data.');
+            foreach ($componentScores as $componentId => $score) {
+                abort_unless(ctype_digit((string) $componentId) && AssessmentComponent::whereKey($componentId)->where('section_id', $class->section_id)->where('type', '!=', 'observation')->exists(), 422, 'An assessment component does not belong to this class section.');
+                if ($score !== null && $score !== '') {
+                    $component = AssessmentComponent::findOrFail($componentId);
+                    abort_unless(is_numeric($score) && $score >= 0 && $score <= $component->max_score, 422, 'A score is outside the allowed range.');
+                }
+            }
+        }
+
+        
 
         foreach ($request->scores as $studentId => $componentScores) {
             foreach ($componentScores as $componentId => $score) {
@@ -81,7 +101,7 @@ class ScoreController extends Controller
                             'assessment_component_id' => $componentId,
                         ],
                         [
-                            'class_id' => $request->class_id,
+                            'class_id' => $validated['class_id'],
                             'academic_session_id' => $request->session_id,
                             'score' => $score,
                             'entered_by' => $staffId,
@@ -96,25 +116,28 @@ class ScoreController extends Controller
 
     public function submitForApproval(Request $request)
     {
-        $request->validate([
-            'class_id' => 'required',
-            'term_id' => 'required',
-            'session_id' => 'required',
+        $validated = $request->validate([
+            'class_id' => ['required', 'integer', 'exists:classes,id'],
+            'term_id' => ['required', 'integer', 'exists:terms,id'],
+            'session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
         ]);
-
-        $students = Student::where('class_id', $request->class_id)->get();
+        Term::whereKey($validated['term_id'])->where('academic_session_id', $validated['session_id'])->firstOrFail();
+        $students = Student::where('class_id', $validated['class_id'])->get();
         
         if ($students->isEmpty()) {
             return back()->withErrors(['error' => 'No students found in this class.']);
         }
 
         $staff = Staff::where('user_id', Auth::id())->first();
-        $staffId = $staff ? $staff->id : 1;
+        abort_unless($staff, 403, 'Your staff profile is required to submit scores.');
+        $staffId = $staff->id;
 
         foreach ($students as $student) {
             // Check if this student has any scores entered
             $hasScores = ScoreEntry::where('student_id', $student->id)
-                ->where('term_id', $request->term_id)
+                ->where('class_id', $validated['class_id'])
+                ->where('term_id', $validated['term_id'])
+                ->where('academic_session_id', $validated['session_id'])
                 ->exists();
 
             if (!$hasScores) {
@@ -124,8 +147,8 @@ class ScoreController extends Controller
             ResultApproval::updateOrCreate(
                 [
                     'student_id' => $student->id,
-                    'term_id' => $request->term_id,
-                    'academic_session_id' => $request->session_id,
+                    'term_id' => $validated['term_id'],
+                    'academic_session_id' => $validated['session_id'],
                 ],
                 [
                     'class_id' => $request->class_id,

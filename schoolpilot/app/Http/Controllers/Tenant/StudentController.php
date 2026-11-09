@@ -37,10 +37,17 @@ class StudentController extends Controller
             'date_admitted' => 'required|date',
         ]);
 
+        if (! empty($data['class_id'])) {
+            $class = SchoolClass::findOrFail($data['class_id']);
+            if ((int) $class->section_id !== (int) $data['section_id']) {
+                return back()->withErrors(['class_id' => 'The selected class does not belong to the selected section.'])->withInput();
+            }
+        }
+
         $data['status'] = 'active';
 
         Student::create($data);
 
-        return redirect('/school/greenfield/students')->with('success', 'Student added successfully!');
+        return redirect('/school/' . $request->route('school') . '/students')->with('success', 'Student added successfully!');
     }
 }

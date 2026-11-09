@@ -27,15 +27,22 @@ class ResultController extends Controller
 
     public function classResults(Request $request)
     {
-        if (!$request->has('class_id')) {
-            return redirect('/school/greenfield/results');
+        if (! $request->filled('class_id')) {
+            return redirect('/school/' . $request->route('school') . '/results');
         }
 
-        $classId = $request->class_id;
-        $termId = $request->term_id;
-        $sessionId = $request->session_id;
+        $validated = $request->validate([
+            'class_id' => ['required', 'integer', 'exists:classes,id'],
+            'term_id' => ['required', 'integer', 'exists:terms,id'],
+            'session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
+        ]);
 
-        $class = SchoolClass::find($classId);
+        $classId = $validated['class_id'];
+        $termId = $validated['term_id'];
+        $sessionId = $validated['session_id'];
+        $term = Term::whereKey($termId)->where('academic_session_id', $sessionId)->firstOrFail();
+
+        $class = SchoolClass::findOrFail($classId);
         
         // ONLY get students whose results have been submitted for compilation
         $students = Student::where('class_id', $classId)
@@ -92,7 +99,14 @@ class ResultController extends Controller
 
     public function approve(Request $request)
     {
-        $request->validate(['student_id' => 'required', 'term_id' => 'required', 'session_id' => 'required']);
+        $validated = $request->validate([
+            'student_id' => ['required', 'integer', 'exists:students,id'],
+            'term_id' => ['required', 'integer', 'exists:terms,id'],
+            'session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
+        ]);
+        Term::whereKey($validated['term_id'])
+            ->where('academic_session_id', $validated['session_id'])
+            ->firstOrFail();
         
         $approval = ResultApproval::where('student_id', $request->student_id)
             ->where('term_id', $request->term_id)
@@ -104,7 +118,8 @@ class ResultController extends Controller
         }
 
         $staff = Staff::where('user_id', Auth::id())->first();
-        $staffId = $staff ? $staff->id : 1;
+        abort_unless($staff, 403, 'Your staff profile is required to approve results.');
+        $staffId = $staff->id;
         $role = Auth::user()->role;
 
         if ($role === 'class_teacher' && $approval->status === 'class_teacher_pending') {
@@ -132,10 +147,15 @@ class ResultController extends Controller
 
     public function reportCard(Request $request, $studentId)
     {
-        $termId = $request->term_id;
-        $sessionId = $request->session_id;
-        $student = Student::find($studentId);
-        $class = SchoolClass::find($student->class_id);
+        $validated = $request->validate([
+            'term_id' => ['required', 'integer', 'exists:terms,id'],
+            'session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
+        ]);
+        $termId = $validated['term_id'];
+        $sessionId = $validated['session_id'];
+        Term::whereKey($termId)->where('academic_session_id', $sessionId)->firstOrFail();
+        $student = Student::findOrFail($studentId);
+        $class = SchoolClass::findOrFail($student->class_id);
         
         $approval = ResultApproval::where('student_id', $studentId)
             ->where('term_id', $termId)
