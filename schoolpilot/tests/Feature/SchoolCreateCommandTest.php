@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Platform\ProvisioningLog;
+use Database\Seeders\Tenant\DatabaseSeeder as TenantDatabaseSeeder;
 use Tests\TestCase;
 
 class SchoolCreateCommandTest extends TestCase
@@ -31,5 +33,15 @@ class SchoolCreateCommandTest extends TestCase
             'slug' => 'example-school',
             'email' => 'admin@example.test',
         ])->assertExitCode(1);
+    }
+
+    public function test_configured_tenant_seeder_exists(): void
+    {
+        $this->assertTrue(class_exists(TenantDatabaseSeeder::class));
+    }
+
+    public function test_provisioning_logs_use_the_central_database_connection(): void
+    {
+        $this->assertSame('central_sqlite', (new ProvisioningLog())->getConnectionName());
     }
 }
