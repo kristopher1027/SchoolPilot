@@ -14,6 +14,7 @@ use App\Models\Tenant\Term;
 use App\Models\Tenant\Staff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ScoreController extends Controller
 {
@@ -201,7 +202,7 @@ class ScoreController extends Controller
         $role = Auth::user()->role;
 
         if ($role === 'class_teacher') {
-            $assigned = \\Illuminate\\Support\\Facades\\DB::table('class_teachers')
+            $assigned = DB::table('class_teachers')
                 ->where('staff_id', $staff->id)
                 ->where('class_id', $classId)
                 ->where('academic_session_id', $sessionId)
@@ -212,7 +213,7 @@ class ScoreController extends Controller
         }
 
         if ($role === 'subject_teacher') {
-            $assigned = $subjectId !== null && \\Illuminate\\Support\\Facades\\DB::table('teacher_subjects')
+            $assigned = $subjectId !== null && DB::table('teacher_subjects')
                 ->where('staff_id', $staff->id)
                 ->where('class_id', $classId)
                 ->where('subject_id', $subjectId)
