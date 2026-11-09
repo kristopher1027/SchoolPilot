@@ -68,6 +68,95 @@ class SchoolCreateCommandTest extends TestCase
         }
     }
 
+    public function test_two_schools_receive_separate_databases_and_cannot_read_each_others_data(): void
+    {
+        $centralDatabase = tempnam(sys_get_temp_dir(), 'schoolpilot-central-');
+        $firstTenantDatabase = database_path('tenants/isolation-first-school.sqlite');
+        $secondTenantDatabase = database_path('tenants/isolation-second-school.sqlite');
+        $previousCentralDatabase = config('database.connections.central_sqlite.database');
+        $previousTenantDatabase = config('database.connections.tenant_sqlite.database');
+        $previousDefault = config('database.default');
+
+        try {
+            config(['database.connections.central_sqlite.database' => $centralDatabase]);
+            DB::purge('central_sqlite');
+
+            Schema::connection('central_sqlite')->create('tenants', function ($table): void {
+                $table->string('id')->primary();
+                $table->timestamps();
+                $table->json('data')->nullable();
+            });
+
+            Schema::connection('central_sqlite')->create('provisioning_logs', function ($table): void {
+                $table->id();
+                $table->string('school_id')->nullable();
+                $table->unsignedBigInteger('performed_by')->nullable();
+                $table->string('action');
+                $table->string('status')->default('success');
+                $table->text('notes')->nullable();
+                $table->timestamps();
+            });
+
+            $this->artisan('school:create', [
+                'name' => 'First Isolation School',
+                'slug' => 'isolation-first-school',
+                'email' => 'admin@first-isolation.test',
+            ])
+                ->expectsQuestion('Set a temporary password for the school administrator (minimum 12 characters)', 'First-School-Password-2026')
+                ->expectsQuestion('Confirm administrator password', 'First-School-Password-2026')
+                ->assertExitCode(0);
+
+            $this->artisan('school:create', [
+                'name' => 'Second Isolation School',
+                'slug' => 'isolation-second-school',
+                'email' => 'admin@second-isolation.test',
+            ])
+                ->expectsQuestion('Set a temporary password for the school administrator (minimum 12 characters)', 'Second-School-Password-2026')
+                ->expectsQuestion('Confirm administrator password', 'Second-School-Password-2026')
+                ->assertExitCode(0);
+
+            $firstTenant = Tenant::query()->where('data->slug', 'isolation-first-school')->first();
+            $secondTenant = Tenant::query()->where('data->slug', 'isolation-second-school')->first();
+
+            $this->assertNotNull($firstTenant);
+            $this->assertNotNull($secondTenant);
+            $this->assertNotSame($firstTenant->db_name, $secondTenant->db_name);
+            $this->assertFileExists($firstTenantDatabase);
+            $this->assertFileExists($secondTenantDatabase);
+
+            config(['database.connections.tenant_sqlite.database' => $firstTenantDatabase]);
+            DB::purge('tenant_sqlite');
+
+            $firstConnection = DB::connection('tenant_sqlite');
+            $this->assertTrue($firstConnection->table('users')->where('email', 'admin@first-isolation.test')->exists());
+            $this->assertFalse($firstConnection->table('users')->where('email', 'admin@second-isolation.test')->exists());
+            $this->assertSame('First Isolation School', $firstConnection->table('settings')->where('key', 'school_name')->value('value'));
+
+            config(['database.connections.tenant_sqlite.database' => $secondTenantDatabase]);
+            DB::purge('tenant_sqlite');
+
+            $secondConnection = DB::connection('tenant_sqlite');
+            $this->assertTrue($secondConnection->table('users')->where('email', 'admin@second-isolation.test')->exists());
+            $this->assertFalse($secondConnection->table('users')->where('email', 'admin@first-isolation.test')->exists());
+            $this->assertSame('Second Isolation School', $secondConnection->table('settings')->where('key', 'school_name')->value('value'));
+        } finally {
+            DB::purge('tenant_sqlite');
+            DB::purge('central_sqlite');
+
+            config([
+                'database.default' => $previousDefault,
+                'database.connections.central_sqlite.database' => $previousCentralDatabase,
+                'database.connections.tenant_sqlite.database' => $previousTenantDatabase,
+            ]);
+
+            foreach ([$firstTenantDatabase, $secondTenantDatabase, $centralDatabase] as $database) {
+                if (is_file($database)) {
+                    @unlink($database);
+                }
+            }
+        }
+    }
+
     public function test_school_create_provisions_a_tenant_database_and_first_administrator(): void
     {
         $centralDatabase = tempnam(sys_get_temp_dir(), 'schoolpilot-central-');
