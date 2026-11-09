@@ -22,7 +22,7 @@ class ExampleTest extends TestCase
             ->assertOk()
             ->assertSee('School email address')
             ->assertSee('Sign in to SchoolPilot')
-            ->assertSee('action="/login"');
+            ->assertSee('action="/login"', false);
     }
 
     public function test_legacy_school_login_url_redirects_to_the_universal_login(): void
