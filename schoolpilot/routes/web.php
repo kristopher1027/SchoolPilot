@@ -18,10 +18,14 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('/school/greenfield/login');
 });
 
 Route::prefix('school/{school}')->group(function () {
+        Route::get('/', function (string $school) {
+            return redirect('/school/' . $school . '/login');
+        });
+
         Route::get('/login', function () {
             return view('tenant.login');
         });
