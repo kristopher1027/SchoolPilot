@@ -17,7 +17,7 @@ RUN composer dump-autoload --no-dev --optimize
 
 FROM php:8.3-apache
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libicu-dev libonig-dev libzip-dev libcurl4-openssl-dev libsqlite3-dev unzip \
+    libicu-dev libonig-dev libzip-dev libcurl4-openssl-dev libsqlite3-dev libxml2-dev unzip \
     && docker-php-ext-install pdo_sqlite mbstring bcmath intl zip curl xml \
     && sed -i 's/Listen 80/Listen 10000/' /etc/apache2/ports.conf \
     && a2enmod rewrite headers \
