@@ -127,13 +127,16 @@ Route::post('/login', function (Request $request) {
     $request->session()->put('_school_authenticated_slug', $match['slug']);
 
     DB::purge('tenant_sqlite');
-    Config::set('database.default', env('DB_CONNECTION', 'sqlite'));
+    Config::set('database.default', $previousDefaultConnection);
     Config::set('database.connections.tenant_sqlite.database', null);
 
     return redirect('/school/' . $match['slug']);
 })->middleware('throttle:5,1');
 
 Route::prefix('school/{school}')->group(function () {
+        // Keep old school-specific login bookmarks working after the universal login change.
+        Route::get('/login', fn () => redirect('/login'));
+
         Route::middleware(['auth:school', EnsureActiveUser::class])->get('/', function () {
             $user = Auth::guard('school')->user();
 
