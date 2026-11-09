@@ -64,7 +64,7 @@ class StaffController extends Controller
             ]);
         });
 
-        return redirect('/school/greenfield/staff')->with(
+        return redirect('/school/' . $request->route('school') . '/staff')->with(
             'success',
             'Staff member added successfully. Share the initial password securely and ask the staff member to change it.'
         );
