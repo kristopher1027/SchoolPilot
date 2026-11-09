@@ -15,7 +15,7 @@ RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --opt
 COPY . .
 RUN composer dump-autoload --no-dev --optimize
 
-FROM php:8.3-apache
+FROM php:8.4-apache
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libicu-dev libonig-dev libzip-dev libcurl4-openssl-dev libsqlite3-dev libxml2-dev unzip \
     && docker-php-ext-install pdo_sqlite mbstring bcmath intl zip curl xml \
