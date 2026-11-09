@@ -64,6 +64,8 @@ class ResultController extends Controller
                 $scores = ScoreEntry::where('student_id', $student->id)
                     ->where('subject_id', $subject->id)
                     ->where('term_id', $termId)
+                    ->where('class_id', $classId)
+                    ->where('academic_session_id', $sessionId)
                     ->get();
 
                 $subjectTotal = $scores->sum('score');
@@ -170,7 +172,12 @@ class ResultController extends Controller
         $subjectScores = [];
         $totalScore = 0;
         foreach ($subjects as $subject) {
-            $scores = ScoreEntry::where('student_id', $student->id)->where('subject_id', $subject->id)->where('term_id', $termId)->get();
+            $scores = ScoreEntry::where('student_id', $student->id)
+                ->where('class_id', $class->id)
+                ->where('subject_id', $subject->id)
+                ->where('term_id', $termId)
+                ->where('academic_session_id', $sessionId)
+                ->get();
             $subjectTotal = $scores->sum('score');
             $totalScore += $subjectTotal;
 
