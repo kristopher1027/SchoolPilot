@@ -15,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo(fn (Request $request) => $request->route('school')
             ? '/school/' . $request->route('school') . '/login'
-            : '/school/greenfield/login');
+            : '/login');
 
         // Trust the Codespace proxy.
         $middleware->trustProxies(at: '*');
