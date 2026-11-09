@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Schema;
 
 class CreateTenantsTable extends Migration
 {
+    protected $connection = 'central_sqlite';
+
     /**
      * Run the migrations.
      *
@@ -15,7 +17,7 @@ class CreateTenantsTable extends Migration
      */
     public function up(): void
     {
-        Schema::create('tenants', function (Blueprint $table) {
+        Schema::connection($this->connection)->create('tenants', function (Blueprint $table) {
             $table->string('id')->primary();
 
             // your custom columns may go here
@@ -32,6 +34,6 @@ class CreateTenantsTable extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('tenants');
+        Schema::connection($this->connection)->dropIfExists('tenants');
     }
 }

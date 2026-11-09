@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Schema;
 
 class CreateDomainsTable extends Migration
 {
+    protected $connection = 'central_sqlite';
+
     /**
      * Run the migrations.
      *
@@ -15,7 +17,7 @@ class CreateDomainsTable extends Migration
      */
     public function up(): void
     {
-        Schema::create('domains', function (Blueprint $table) {
+        Schema::connection($this->connection)->create('domains', function (Blueprint $table) {
             $table->increments('id');
             $table->string('domain', 255)->unique();
             $table->string('tenant_id');
@@ -32,6 +34,6 @@ class CreateDomainsTable extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('domains');
+        Schema::connection($this->connection)->dropIfExists('domains');
     }
 }

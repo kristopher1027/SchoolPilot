@@ -6,9 +6,11 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    protected $connection = 'central_sqlite';
+
     public function up(): void
     {
-        Schema::create('provisioning_logs', function (Blueprint $table) {
+        Schema::connection($this->connection)->create('provisioning_logs', function (Blueprint $table) {
             $table->id();
             // Tenant IDs are UUID strings; intentionally no FK so logs survive school deletion.
             $table->string('school_id')->nullable();
@@ -22,6 +24,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('provisioning_logs');
+        Schema::connection($this->connection)->dropIfExists('provisioning_logs');
     }
 };

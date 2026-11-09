@@ -50,6 +50,24 @@ class SchoolCreateCommandTest extends TestCase
         $this->assertSame('central_sqlite', (new ProvisioningLog())->getConnectionName());
     }
 
+    public function test_all_platform_migrations_are_bound_to_the_central_connection(): void
+    {
+        require_once database_path('migrations/2019_09_15_000010_create_tenants_table.php');
+        require_once database_path('migrations/2019_09_15_000020_create_domains_table.php');
+
+        $migrations = [
+            new \CreateTenantsTable(),
+            new \CreateDomainsTable(),
+            require database_path('migrations/2026_10_26_084706_create_platform_admins_table.php'),
+            require database_path('migrations/2026_10_26_084707_create_provisioning_logs_table.php'),
+            require database_path('migrations/2026_10_26_084708_create_subscriptions_table.php'),
+        ];
+
+        foreach ($migrations as $migration) {
+            $this->assertSame('central_sqlite', $migration->getConnection());
+        }
+    }
+
     public function test_school_create_provisions_a_tenant_database_and_first_administrator(): void
     {
         $centralDatabase = tempnam(sys_get_temp_dir(), 'schoolpilot-central-');
