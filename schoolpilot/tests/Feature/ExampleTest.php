@@ -1,8 +1,9 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\\Feature;
 
-use Tests\TestCase;
+use App\\Http\\Middleware\\UseSchoolDatabase;
+use Tests\\TestCase;
 
 class ExampleTest extends TestCase
 {
@@ -17,7 +18,10 @@ class ExampleTest extends TestCase
 
     public function test_the_demo_school_root_redirects_to_its_login_page(): void
     {
-        $this->get('/school/greenfield')
+        // Tenant resolution is covered by UseSchoolDatabaseIsolationTest.
+        // This test isolates the route's redirect behavior from tenant DB setup.
+        $this->withoutMiddleware(UseSchoolDatabase::class)
+            ->get('/school/greenfield')
             ->assertRedirect('/school/greenfield/login');
     }
 }
