@@ -47,11 +47,6 @@ class SchoolCreateCommand extends Command
             return self::FAILURE;
         }
 
-        if (User::query()->where('email', $email)->exists()) {
-            // This check is intentionally performed after switching to the new tenant DB below.
-            // Do not query the current/default database here.
-        }
-
         $password = $this->secret('Set a temporary password for the school administrator (minimum 12 characters)');
         if (! is_string($password) || strlen($password) < 12) {
             $this->components->error('Administrator password must be at least 12 characters.');
@@ -93,24 +88,24 @@ class SchoolCreateCommand extends Command
             DB::purge('tenant_sqlite');
 
             // Create and initialize the tenant schema before publishing it in the registry.
-            $this->call('migrate', [
+            $migrationExitCode = $this->call('migrate', [
                 '--database' => 'tenant_sqlite',
                 '--path' => database_path('migrations/tenant'),
                 '--realpath' => true,
                 '--force' => true,
             ]);
-            if ($this->laravel->make('Illuminate\\Contracts\\Console\\Kernel')->output()) {
-                // The command exit code is checked below; this call only keeps console output visible.
-            }
-            if ($this->getOutput()->getVerbosity() === null) {
-                throw new RuntimeException('Tenant migration output could not be initialized.');
+            if ($migrationExitCode !== 0) {
+                throw new \RuntimeException('Tenant database migrations did not complete successfully.');
             }
 
-            $this->call('db:seed', [
+            $seederExitCode = $this->call('db:seed', [
                 '--database' => 'tenant_sqlite',
-                '--class' => \\App\\Models\\Tenant\\TenantDatabaseSeeder::class,
+                '--class' => \App\Models\Tenant\TenantDatabaseSeeder::class,
                 '--force' => true,
             ]);
+            if ($seederExitCode !== 0) {
+                throw new \RuntimeException('Tenant baseline data could not be seeded.');
+            }
 
             DB::setDefaultConnection('tenant_sqlite');
             DB::purge('tenant_sqlite');
