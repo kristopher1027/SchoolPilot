@@ -13,4 +13,11 @@ php artisan config:cache
 php artisan migrate --database=central_sqlite --force
 php artisan schoolpilot:demo-setup
 
+# Tenant databases are created by the root startup process, but Apache/PHP
+# serves requests as www-data. Hand ownership over before Apache starts so
+# SQLite can open and update tenant databases (including its journal files).
+chown -R www-data:www-data database/tenants
+find database/tenants -type d -exec chmod 0750 {} +
+find database/tenants -type f -name '*.sqlite' -exec chmod 0640 {} +
+
 exec "$@"
