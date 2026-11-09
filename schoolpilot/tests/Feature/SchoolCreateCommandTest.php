@@ -87,7 +87,7 @@ class SchoolCreateCommandTest extends TestCase
                 ->expectsQuestion('Confirm administrator password', 'Secure-Test-Password-2026')
                 ->assertExitCode(0);
 
-            $tenant = Tenant::query()->where('slug', 'integration-school')->first();
+            $tenant = Tenant::query()->where('data->slug', 'integration-school')->first();
 
             $this->assertNotNull($tenant);
             $this->assertSame('integration-school.sqlite', $tenant->db_name);
