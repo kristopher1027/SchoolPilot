@@ -52,6 +52,9 @@ class ScoreController extends Controller
             'The selected subject does not belong to this class section.'
         );
         Term::whereKey($termId)->where('academic_session_id', $sessionId)->firstOrFail();
+        $staff = Staff::where('user_id', Auth::id())->first();
+        abort_unless($staff, 403, 'Your staff profile is required to enter scores.');
+        $this->authorizeTeacherAssignment($staff, $classId, $subjectId, $sessionId, $termId);
         $students = Student::where('class_id', $classId)->get();
         $sectionId = $class->section_id;
         $components = AssessmentComponent::where('section_id', $sectionId)
@@ -93,6 +96,7 @@ class ScoreController extends Controller
         Term::whereKey($validated['term_id'])->where('academic_session_id', $validated['session_id'])->firstOrFail();
         $staff = Staff::where('user_id', Auth::id())->first();
         abort_unless($staff, 403, 'Your staff profile is required to enter scores.');
+        $this->authorizeTeacherAssignment($staff, $validated['class_id'], $validated['subject_id'], $validated['session_id'], $validated['term_id']);
         $staffId = $staff->id;
 
         foreach ($request->scores as $studentId => $componentScores) {
@@ -156,6 +160,12 @@ class ScoreController extends Controller
 
         $staff = Staff::where('user_id', Auth::id())->first();
         abort_unless($staff, 403, 'Your staff profile is required to submit scores.');
+        $role = Auth::user()->role;
+        if ($role === 'class_teacher') {
+            $this->authorizeTeacherAssignment($staff, $validated['class_id'], null, $validated['session_id'], $validated['term_id']);
+        } else {
+            abort_unless(in_array($role, ['school_admin', 'principal', 'vice_principal', 'dean', 'hod'], true), 403, 'Only the assigned class teacher or an authorised school leader can submit class results.');
+        }
         $staffId = $staff->id;
 
         foreach ($students as $student) {
@@ -186,4 +196,32 @@ class ScoreController extends Controller
 
         return back()->with('success', 'Scores submitted for approval!');
     }
+    private function authorizeTeacherAssignment(Staff $staff, int $classId, ?int $subjectId, int $sessionId, int $termId): void
+    {
+        $role = Auth::user()->role;
+
+        if ($role === 'class_teacher') {
+            $assigned = \\Illuminate\\Support\\Facades\\DB::table('class_teachers')
+                ->where('staff_id', $staff->id)
+                ->where('class_id', $classId)
+                ->where('academic_session_id', $sessionId)
+                ->exists();
+
+            abort_unless($assigned, 403, 'You are not assigned as the teacher for this class and academic session.');
+            return;
+        }
+
+        if ($role === 'subject_teacher') {
+            $assigned = $subjectId !== null && \\Illuminate\\Support\\Facades\\DB::table('teacher_subjects')
+                ->where('staff_id', $staff->id)
+                ->where('class_id', $classId)
+                ->where('subject_id', $subjectId)
+                ->where('academic_session_id', $sessionId)
+                ->where('term_id', $termId)
+                ->exists();
+
+            abort_unless($assigned, 403, 'You are not assigned to teach this subject in the selected class, term and session.');
+        }
+    }
+
 }
