@@ -222,9 +222,12 @@ class SchoolCreateCommandTest extends TestCase
             require_once database_path('migrations/2019_09_15_000010_create_tenants_table.php');
             require_once database_path('migrations/2019_09_15_000020_create_domains_table.php');
 
+            $tenantsMigration = 'CreateTenantsTable';
+            $domainsMigration = 'CreateDomainsTable';
+
             $migrations = [
-                new \\CreateTenantsTable(),
-                new \\CreateDomainsTable(),
+                new $tenantsMigration(),
+                new $domainsMigration(),
                 require database_path('migrations/2026_10_26_084706_create_platform_admins_table.php'),
                 require database_path('migrations/2026_10_26_084707_create_provisioning_logs_table.php'),
                 require database_path('migrations/2026_10_26_084708_create_subscriptions_table.php'),
