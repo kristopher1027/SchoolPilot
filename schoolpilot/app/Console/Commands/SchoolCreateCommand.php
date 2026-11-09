@@ -78,16 +78,18 @@ class SchoolCreateCommand extends Command
                 throw new \RuntimeException('Unable to create the tenant database directory.');
             }
 
-            if (! touch($databasePath)) {
-                throw new \RuntimeException('Unable to create the tenant database file.');
+            // Exclusive creation prevents two provisioning processes from sharing a new file.
+            $handle = @fopen($databasePath, 'x');
+            if ($handle === false) {
+                throw new \RuntimeException('The tenant database file already exists or cannot be created.');
             }
+            fclose($handle);
             $databaseCreated = true;
             @chmod($databasePath, 0640);
 
             Config::set('database.connections.tenant_sqlite.database', $databasePath);
             DB::purge('tenant_sqlite');
 
-            // Create and initialize the tenant schema before publishing it in the registry.
             $migrationExitCode = $this->call('migrate', [
                 '--database' => 'tenant_sqlite',
                 '--path' => database_path('migrations/tenant'),
@@ -100,7 +102,7 @@ class SchoolCreateCommand extends Command
 
             $seederExitCode = $this->call('db:seed', [
                 '--database' => 'tenant_sqlite',
-                '--class' => \App\Models\Tenant\TenantDatabaseSeeder::class,
+                '--class' => \Database\Seeders\Tenant\DatabaseSeeder::class,
                 '--force' => true,
             ]);
             if ($seederExitCode !== 0) {
@@ -114,10 +116,10 @@ class SchoolCreateCommand extends Command
                 throw new \RuntimeException('The administrator email already exists in this tenant database.');
             }
 
-            DB::table('settings')->where('key', 'school_name')->update([
-                'value' => $name,
-                'updated_at' => now(),
-            ]);
+            DB::table('settings')->updateOrInsert(
+                ['key' => 'school_name'],
+                ['value' => $name, 'updated_at' => now(), 'created_at' => now()],
+            );
 
             User::query()->create([
                 'name' => $name . ' Administrator',
