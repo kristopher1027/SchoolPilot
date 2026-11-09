@@ -81,7 +81,7 @@ class UseSchoolDatabaseIsolationTest extends TestCase
             ],
         ]);
 
-        Route::middleware(UseSchoolDatabase::class)->get('/_tenant-isolation/{school}', function () {
+        Route::middleware('web')->get('/_tenant-isolation/{school}', function () {
             if (request()->boolean('login')) {
                 Auth::guard('school')->login(User::query()->findOrFail(1));
             }
