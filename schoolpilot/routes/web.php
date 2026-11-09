@@ -26,7 +26,7 @@ Route::get('/', function () {
 
 Route::get('/login', function () {
     return view('tenant.login');
-})->middleware('guest:school');
+});
 
 Route::post('/login', function (Request $request) {
     $credentials = $request->validate([
@@ -127,6 +127,7 @@ Route::post('/login', function (Request $request) {
     $request->session()->put('_school_authenticated_slug', $match['slug']);
 
     DB::purge('tenant_sqlite');
+    Config::set('database.default', env('DB_CONNECTION', 'sqlite'));
     Config::set('database.connections.tenant_sqlite.database', null);
 
     return redirect('/school/' . $match['slug']);
@@ -149,7 +150,7 @@ Route::prefix('school/{school}')->group(function () {
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
-                return redirect('/school/' . $request->route('school') . '/login');
+                return redirect('/login');
             });
 
             Route::get('/dashboard', function () {
