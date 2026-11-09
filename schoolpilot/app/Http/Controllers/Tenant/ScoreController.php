@@ -101,7 +101,7 @@ class ScoreController extends Controller
                             'assessment_component_id' => $componentId,
                         ],
                         [
-                            'class_id' => $request->class_id,
+                            'class_id' => $validated['class_id'],
                             'academic_session_id' => $request->session_id,
                             'score' => $score,
                             'entered_by' => $staffId,
@@ -135,7 +135,9 @@ class ScoreController extends Controller
         foreach ($students as $student) {
             // Check if this student has any scores entered
             $hasScores = ScoreEntry::where('student_id', $student->id)
-                ->where('term_id', $request->term_id)
+                ->where('class_id', $validated['class_id'])
+                ->where('term_id', $validated['term_id'])
+                ->where('academic_session_id', $validated['session_id'])
                 ->exists();
 
             if (!$hasScores) {
@@ -145,8 +147,8 @@ class ScoreController extends Controller
             ResultApproval::updateOrCreate(
                 [
                     'student_id' => $student->id,
-                    'term_id' => $request->term_id,
-                    'academic_session_id' => $request->session_id,
+                    'term_id' => $validated['term_id'],
+                    'academic_session_id' => $validated['session_id'],
                 ],
                 [
                     'class_id' => $request->class_id,
