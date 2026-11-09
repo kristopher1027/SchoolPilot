@@ -118,11 +118,11 @@ class UseSchoolDatabaseIsolationTest extends TestCase
     {
         $this->getJson('/_tenant-isolation/alpha')
             ->assertOk()
-            ->assertExactJson(['marker' => 'Alpha School']);
+            ->assertExactJson(['marker' => 'Alpha School', 'user_id' => null]);
 
         $this->getJson('/_tenant-isolation/beta')
             ->assertOk()
-            ->assertExactJson(['marker' => 'Beta School']);
+            ->assertExactJson(['marker' => 'Beta School', 'user_id' => null]);
     }
 
     public function test_authenticated_session_cannot_be_reused_for_another_school(): void
