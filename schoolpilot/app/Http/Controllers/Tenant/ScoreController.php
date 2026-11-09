@@ -33,12 +33,25 @@ class ScoreController extends Controller
             return redirect('/school/' . $request->route('school') . '/scores');
         }
 
-        $classId = $request->class_id;
-        $subjectId = $request->subject_id;
-        $termId = $request->term_id;
-        $sessionId = $request->session_id;
+        $validated = $request->validate([
+            'class_id' => ['required', 'integer', 'exists:classes,id'],
+            'subject_id' => ['required', 'integer', 'exists:subjects,id'],
+            'term_id' => ['required', 'integer', 'exists:terms,id'],
+            'session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
+        ]);
+
+        $classId = $validated['class_id'];
+        $subjectId = $validated['subject_id'];
+        $termId = $validated['term_id'];
+        $sessionId = $validated['session_id'];
 
         $class = SchoolClass::findOrFail($classId);
+        abort_unless(
+            Subject::whereKey($subjectId)->where('section_id', $class->section_id)->exists(),
+            422,
+            'The selected subject does not belong to this class section.'
+        );
+        Term::whereKey($termId)->where('academic_session_id', $sessionId)->firstOrFail();
         $students = Student::where('class_id', $classId)->get();
         $sectionId = $class->section_id;
         $components = AssessmentComponent::where('section_id', $sectionId)->where('type', '!=', 'observation')->get();
@@ -46,6 +59,7 @@ class ScoreController extends Controller
         $existingScores = ScoreEntry::where('class_id', $classId)
             ->where('subject_id', $subjectId)
             ->where('term_id', $termId)
+            ->where('academic_session_id', $sessionId)
             ->get()
             ->groupBy('student_id');
 
@@ -97,12 +111,13 @@ class ScoreController extends Controller
                         [
                             'student_id' => $studentId,
                             'subject_id' => $request->subject_id,
-                            'term_id' => $request->term_id,
+                            'term_id' => $validated['term_id'],
+                            'academic_session_id' => $validated['session_id'],
                             'assessment_component_id' => $componentId,
                         ],
                         [
                             'class_id' => $validated['class_id'],
-                            'academic_session_id' => $request->session_id,
+                            'academic_session_id' => $validated['session_id'],
                             'score' => $score,
                             'entered_by' => $staffId,
                         ]
