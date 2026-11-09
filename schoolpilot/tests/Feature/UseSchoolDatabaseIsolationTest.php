@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Http\Middleware\UseSchoolDatabase;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Tenant\User;
 use Tests\TestCase;
 
 class UseSchoolDatabaseIsolationTest extends TestCase
@@ -79,9 +81,14 @@ class UseSchoolDatabaseIsolationTest extends TestCase
             ],
         ]);
 
-        Route::middleware(UseSchoolDatabase::class)->get('/_tenant-isolation/{school}', function () {
+        Route::middleware('web')->get('/_tenant-isolation/{school}', function () {
+            if (request()->boolean('login')) {
+                Auth::guard('school')->login(User::query()->findOrFail(1));
+            }
+
             return response()->json([
                 'marker' => DB::table('tenant_marker')->value('marker'),
+                'user_id' => Auth::guard('school')->id(),
             ]);
         });
     }
@@ -111,11 +118,23 @@ class UseSchoolDatabaseIsolationTest extends TestCase
     {
         $this->getJson('/_tenant-isolation/alpha')
             ->assertOk()
-            ->assertExactJson(['marker' => 'Alpha School']);
+            ->assertExactJson(['marker' => 'Alpha School', 'user_id' => null]);
 
         $this->getJson('/_tenant-isolation/beta')
             ->assertOk()
-            ->assertExactJson(['marker' => 'Beta School']);
+            ->assertExactJson(['marker' => 'Beta School', 'user_id' => null]);
+    }
+
+    public function test_authenticated_session_cannot_be_reused_for_another_school(): void
+    {
+        $this->getJson('/_tenant-isolation/alpha?login=1')
+            ->assertOk()
+            ->assertJsonPath('user_id', 1);
+
+        $this->getJson('/_tenant-isolation/beta')
+            ->assertOk()
+            ->assertJsonPath('marker', 'Beta School')
+            ->assertJsonPath('user_id', null);
     }
 
     public function test_unknown_school_slug_is_rejected(): void
@@ -144,7 +163,27 @@ class UseSchoolDatabaseIsolationTest extends TestCase
         Schema::connection('tenant_sqlite')->create('tenant_marker', function (Blueprint $table): void {
             $table->string('marker');
         });
+        Schema::connection('tenant_sqlite')->create('users', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->string('email')->unique();
+            $table->string('password');
+            $table->string('role')->default('school_admin');
+            $table->boolean('is_active')->default(true);
+            $table->rememberToken();
+            $table->timestamps();
+        });
 
         DB::connection('tenant_sqlite')->table('tenant_marker')->insert(['marker' => $marker]);
+        DB::connection('tenant_sqlite')->table('users')->insert([
+            'id' => 1,
+            'name' => $marker . ' Administrator',
+            'email' => strtolower(str_replace(' ', '.', $marker)) . '@example.test',
+            'password' => bcrypt('Tenant-Test-Password-2026'),
+            'role' => 'school_admin',
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 }
