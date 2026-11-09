@@ -12,16 +12,16 @@ class ExampleTest extends TestCase
         $this->get('/')
             ->assertOk()
             ->assertSee('SchoolPilot')
-            ->assertSee('Enter Demo School')
-            ->assertSee('/school/greenfield/login');
+            ->assertSee('School Login')
+            ->assertSee('/login');
     }
 
-    public function test_the_demo_school_root_redirects_to_its_login_page(): void
+    public function test_the_school_root_requires_authentication(): void
     {
         // Tenant resolution is covered by UseSchoolDatabaseIsolationTest.
         // This test isolates the route's redirect behavior from tenant DB setup.
         $this->withoutMiddleware(UseSchoolDatabase::class)
             ->get('/school/greenfield')
-            ->assertRedirect('/school/greenfield/login');
+            ->assertRedirect('/login');
     }
 }
