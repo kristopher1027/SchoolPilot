@@ -1,24 +1,24 @@
 <?php
 
-use App\Http\Controllers\Tenant\StudentController;
-use App\Http\Controllers\Tenant\StaffController;
-use App\Http\Controllers\Tenant\AcademicController;
-use App\Http\Controllers\Tenant\ScoreController;
-use App\Http\Controllers\Tenant\ResultController;
-use App\Http\Controllers\Tenant\TeacherController;
-use App\Http\Controllers\Tenant\AssignmentController;
-use App\Http\Middleware\EnsureActiveUser;
-use App\Http\Middleware\RoleMiddleware;
-use App\Models\Tenant\AcademicSession;
-use App\Models\Tenant\SchoolClass;
-use App\Models\Tenant\Student;
-use App\Models\Tenant\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
+use App\\Http\\Controllers\\Tenant\\StudentController;
+use App\\Http\\Controllers\\Tenant\\StaffController;
+use App\\Http\\Controllers\\Tenant\\AcademicController;
+use App\\Http\\Controllers\\Tenant\\ScoreController;
+use App\\Http\\Controllers\\Tenant\\ResultController;
+use App\\Http\\Controllers\\Tenant\\TeacherController;
+use App\\Http\\Controllers\\Tenant\\AssignmentController;
+use App\\Http\\Middleware\\EnsureActiveUser;
+use App\\Http\\Middleware\\RoleMiddleware;
+use App\\Models\\Tenant\\AcademicSession;
+use App\\Models\\Tenant\\SchoolClass;
+use App\\Models\\Tenant\\Student;
+use App\\Models\\Tenant\\User;
+use Illuminate\\Http\\Request;
+use Illuminate\\Support\\Facades\\Auth;
+use Illuminate\\Support\\Facades\\Route;
 
 Route::get('/', function () {
-    return redirect('/school/greenfield/login');
+    return view('landing');
 });
 
 Route::prefix('school/{school}')->group(function () {
