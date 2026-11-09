@@ -201,6 +201,72 @@ class SchoolCreateCommandTest extends TestCase
         }
     }
 
+    public function test_platform_migrations_write_only_to_central_database_when_default_connection_differs(): void
+    {
+        $centralDatabase = tempnam(sys_get_temp_dir(), 'schoolpilot-central-');
+        $defaultDatabase = tempnam(sys_get_temp_dir(), 'schoolpilot-default-');
+        $previousCentralDatabase = config('database.connections.central_sqlite.database');
+        $previousDefaultDatabase = config('database.connections.sqlite.database');
+        $previousDefaultConnection = config('database.default');
+
+        try {
+            config([
+                'database.default' => 'sqlite',
+                'database.connections.sqlite.database' => $defaultDatabase,
+                'database.connections.central_sqlite.database' => $centralDatabase,
+            ]);
+
+            DB::purge('sqlite');
+            DB::purge('central_sqlite');
+
+            require_once database_path('migrations/2019_09_15_000010_create_tenants_table.php');
+            require_once database_path('migrations/2019_09_15_000020_create_domains_table.php');
+
+            $tenantsMigration = 'CreateTenantsTable';
+            $domainsMigration = 'CreateDomainsTable';
+
+            $migrations = [
+                new $tenantsMigration(),
+                new $domainsMigration(),
+                require database_path('migrations/2026_10_26_084706_create_platform_admins_table.php'),
+                require database_path('migrations/2026_10_26_084707_create_provisioning_logs_table.php'),
+                require database_path('migrations/2026_10_26_084708_create_subscriptions_table.php'),
+            ];
+
+            foreach ($migrations as $migration) {
+                $migration->up();
+            }
+
+            foreach (['tenants', 'domains', 'platform_admins', 'provisioning_logs', 'subscriptions'] as $table) {
+                $this->assertTrue(
+                    Schema::connection('central_sqlite')->hasTable($table),
+                    "Expected [{$table}] to be created in the central database."
+                );
+                $this->assertFalse(
+                    Schema::connection('sqlite')->hasTable($table),
+                    "Did not expect [{$table}] to be created in the default database."
+                );
+            }
+        } finally {
+            DB::purge('sqlite');
+            DB::purge('central_sqlite');
+
+            config([
+                'database.default' => $previousDefaultConnection,
+                'database.connections.sqlite.database' => $previousDefaultDatabase,
+                'database.connections.central_sqlite.database' => $previousCentralDatabase,
+            ]);
+
+            if (is_file($centralDatabase)) {
+                @unlink($centralDatabase);
+            }
+
+            if (is_file($defaultDatabase)) {
+                @unlink($defaultDatabase);
+            }
+        }
+    }
+
     public function test_stancl_does_not_run_default_database_jobs_for_custom_tenant_provisioning(): void
     {
         $provider = new TenancyServiceProvider($this->app);
