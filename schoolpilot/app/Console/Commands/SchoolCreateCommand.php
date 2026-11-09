@@ -114,6 +114,11 @@ class SchoolCreateCommand extends Command
                 throw new RuntimeException('The administrator email already exists in this tenant database.');
             }
 
+            DB::table('settings')->where('key', 'school_name')->update([
+                'value' => $name,
+                'updated_at' => now(),
+            ]);
+
             User::query()->create([
                 'name' => $name . ' Administrator',
                 'email' => $email,
@@ -131,10 +136,6 @@ class SchoolCreateCommand extends Command
                 'slug' => $slug,
                 'db_name' => $databaseName,
                 'status' => 'active',
-            ]);
-
-            $tenant->domains()->create([
-                'domain' => $slug . '.schoolpilot.test',
             ]);
 
             ProvisioningLog::create([
@@ -169,12 +170,16 @@ class SchoolCreateCommand extends Command
                 @unlink($databasePath);
             }
 
-            ProvisioningLog::create([
-                'school_id' => $tenant?->id,
-                'action' => 'create',
-                'status' => 'failed',
-                'notes' => 'Provisioning failed: ' . Str::limit($exception->getMessage(), 500),
-            ]);
+            try {
+                ProvisioningLog::create([
+                    'school_id' => $tenant?->id,
+                    'action' => 'create',
+                    'status' => 'failed',
+                    'notes' => 'Provisioning failed: ' . Str::limit($exception->getMessage(), 500),
+                ]);
+            } catch (Throwable) {
+                // Logging must not hide the original provisioning failure.
+            }
 
             $this->components->error('School provisioning failed: ' . $exception->getMessage());
             return self::FAILURE;
