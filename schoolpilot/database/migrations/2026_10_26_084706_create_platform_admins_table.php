@@ -6,9 +6,11 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    protected $connection = 'central_sqlite';
+
     public function up(): void
     {
-        Schema::create('platform_admins', function (Blueprint $table) {
+        Schema::connection($this->connection)->create('platform_admins', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
@@ -21,6 +23,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('platform_admins');
+        Schema::connection($this->connection)->dropIfExists('platform_admins');
     }
 };
