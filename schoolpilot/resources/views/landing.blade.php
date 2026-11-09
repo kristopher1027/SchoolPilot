@@ -56,7 +56,7 @@
     <div class="wrap nav">
         <a class="brand" href="/" aria-label="SchoolPilot home"><span class="mark">S</span>SchoolPilot</a>
         <a class="nav-link" href="#features">Platform features</a>
-        <a class="nav-cta" href="/school/greenfield/login">Demo school login</a>
+        <a class="nav-cta" href="/login">School Login</a>
     </div>
 </header>
 <main>
@@ -67,7 +67,7 @@
                 <h1>Spend less time managing. More time helping students grow.</h1>
                 <p class="lead">SchoolPilot brings the everyday work of running a school into one organised place — from student and staff records to classes, academic sessions, scores and results.</p>
                 <div class="actions">
-                    <a class="button" href="/school/greenfield/login">Enter Demo School <span aria-hidden="true">&nbsp;→</span></a>
+                    <a class="button" href="/login">School Login <span aria-hidden="true">&nbsp;→</span></a>
                     <a class="secondary" href="#features">Explore the platform</a>
                 </div>
             </div>
@@ -101,8 +101,8 @@
     <section class="bottom">
         <div class="wrap">
             <h2>Ready to explore SchoolPilot?</h2>
-            <p>Open the Greenfield Demo School portal and take a look around.</p>
-            <a class="button" href="/school/greenfield/login">Enter Demo School →</a>
+            <p>Sign in with your school account to access your own workspace.</p>
+            <a class="button" href="/login">School Login →</a>
         </div>
     </section>
 </main>

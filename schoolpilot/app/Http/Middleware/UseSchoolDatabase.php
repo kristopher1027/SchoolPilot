@@ -13,6 +13,12 @@ class UseSchoolDatabase
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Login endpoints do not need tenant resolution: the legacy URL only
+        // redirects, while the universal login discovers the tenant at sign-in.
+        if ($request->is('school/*/login')) {
+            return $next($request);
+        }
+
         $schoolSlug = $request->route('school');
 
         if (! is_string($schoolSlug)) {
