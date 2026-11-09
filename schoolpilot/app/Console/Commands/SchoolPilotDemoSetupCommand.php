@@ -1,13 +1,13 @@
 <?php
 
-namespace App\\Console\\Commands;
+namespace App\Console\Commands;
 
-use App\\Models\\Platform\\Tenant;
-use Illuminate\\Console\\Command;
-use Illuminate\\Support\\Facades\\Artisan;
-use Illuminate\\Support\\Facades\\Config;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Facades\\Hash;
+use App\Models\Platform\Tenant;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class SchoolPilotDemoSetupCommand extends Command
 {
