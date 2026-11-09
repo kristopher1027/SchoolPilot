@@ -124,6 +124,65 @@ class SchoolCreateCommandTest extends TestCase
         }
     }
 
+    public function test_school_create_removes_tenant_database_when_central_registration_fails(): void
+    {
+        $centralDatabase = tempnam(sys_get_temp_dir(), 'schoolpilot-central-');
+        $tenantDatabase = database_path('tenants/rollback-school.sqlite');
+        $previousCentralDatabase = config('database.connections.central_sqlite.database');
+        $previousTenantDatabase = config('database.connections.tenant_sqlite.database');
+        $previousDefault = config('database.default');
+
+        try {
+            config(['database.connections.central_sqlite.database' => $centralDatabase]);
+            DB::purge('central_sqlite');
+
+            Schema::connection('central_sqlite')->create('tenants', function ($table): void {
+                $table->string('id')->primary();
+                $table->string('required_registration_value');
+                $table->timestamps();
+                $table->json('data')->nullable();
+            });
+
+            Schema::connection('central_sqlite')->create('provisioning_logs', function ($table): void {
+                $table->id();
+                $table->string('school_id')->nullable();
+                $table->unsignedBigInteger('performed_by')->nullable();
+                $table->string('action');
+                $table->string('status')->default('success');
+                $table->text('notes')->nullable();
+                $table->timestamps();
+            });
+
+            $this->artisan('school:create', [
+                'name' => 'Rollback School',
+                'slug' => 'rollback-school',
+                'email' => 'admin@rollback-school.test',
+            ])
+                ->expectsQuestion('Set a temporary password for the school administrator (minimum 12 characters)', 'Secure-Test-Password-2026')
+                ->expectsQuestion('Confirm administrator password', 'Secure-Test-Password-2026')
+                ->assertExitCode(1);
+
+            $this->assertFileDoesNotExist($tenantDatabase);
+            $this->assertFalse(Tenant::query()->where('data->slug', 'rollback-school')->exists());
+            $this->assertTrue(ProvisioningLog::query()->where('action', 'create')->where('status', 'failed')->exists());
+        } finally {
+            DB::purge('tenant_sqlite');
+            DB::purge('central_sqlite');
+            config([
+                'database.default' => $previousDefault,
+                'database.connections.central_sqlite.database' => $previousCentralDatabase,
+                'database.connections.tenant_sqlite.database' => $previousTenantDatabase,
+            ]);
+
+            if (is_file($tenantDatabase)) {
+                @unlink($tenantDatabase);
+            }
+            if (is_file($centralDatabase)) {
+                @unlink($centralDatabase);
+            }
+        }
+    }
+
     public function test_stancl_does_not_run_default_database_jobs_for_custom_tenant_provisioning(): void
     {
         $provider = new TenancyServiceProvider($this->app);
