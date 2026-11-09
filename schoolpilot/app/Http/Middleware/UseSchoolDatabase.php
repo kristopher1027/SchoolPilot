@@ -67,6 +67,13 @@ class UseSchoolDatabase
         DB::setDefaultConnection('tenant_sqlite');
         Auth::shouldUse('school');
 
+        // A session authenticated for one school must never be reused for another.
+        $sessionSchoolKey = '_school_authenticated_slug';
+        if ($request->session()->get($sessionSchoolKey) !== $schoolSlug) {
+            Auth::guard('school')->logout();
+            $request->session()->put($sessionSchoolKey, $schoolSlug);
+        }
+
         try {
             return $next($request);
         } finally {
