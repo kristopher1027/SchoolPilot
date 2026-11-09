@@ -1,15 +1,15 @@
 <?php
 
-namespace App\\Console\\Commands;
+namespace App\Console\Commands;
 
-use App\\Models\\Platform\\ProvisioningLog;
-use App\\Models\\Platform\\Tenant;
-use App\\Models\\Tenant\\User;
-use Illuminate\\Console\\Command;
-use Illuminate\\Support\\Facades\\Config;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Facades\\Hash;
-use Illuminate\\Support\\Str;
+use App\Models\Platform\ProvisioningLog;
+use App\Models\Platform\Tenant;
+use App\Models\Tenant\User;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Throwable;
 
 class SchoolCreateCommand extends Command
@@ -75,11 +75,11 @@ class SchoolCreateCommand extends Command
 
         try {
             if (! is_dir($tenantsDirectory) && ! mkdir($tenantsDirectory, 0750, true) && ! is_dir($tenantsDirectory)) {
-                throw new RuntimeException('Unable to create the tenant database directory.');
+                throw new \RuntimeException('Unable to create the tenant database directory.');
             }
 
             if (! touch($databasePath)) {
-                throw new RuntimeException('Unable to create the tenant database file.');
+                throw new \RuntimeException('Unable to create the tenant database file.');
             }
             $databaseCreated = true;
             @chmod($databasePath, 0640);
@@ -111,7 +111,7 @@ class SchoolCreateCommand extends Command
             DB::purge('tenant_sqlite');
 
             if (User::query()->where('email', $email)->exists()) {
-                throw new RuntimeException('The administrator email already exists in this tenant database.');
+                throw new \RuntimeException('The administrator email already exists in this tenant database.');
             }
 
             DB::table('settings')->where('key', 'school_name')->update([
