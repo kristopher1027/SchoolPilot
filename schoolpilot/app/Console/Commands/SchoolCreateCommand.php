@@ -17,7 +17,8 @@ class SchoolCreateCommand extends Command
     protected $signature = 'school:create
         {name : School display name}
         {slug : Unique lowercase URL slug}
-        {email : Email address for the first school administrator}';
+        {email : Email address for the first school administrator}
+        {--demo : Use the protected Render demo password from the environment}';
 
     protected $description = 'Safely provision an isolated SQLite database for a school';
 
@@ -47,16 +48,24 @@ class SchoolCreateCommand extends Command
             return self::FAILURE;
         }
 
-        $password = $this->secret('Set a temporary password for the school administrator (minimum 12 characters)');
-        if (! is_string($password) || strlen($password) < 12) {
-            $this->components->error('Administrator password must be at least 12 characters.');
-            return self::FAILURE;
-        }
+        if ($this->option('demo')) {
+            $password = (string) env('SCHOOLPILOT_DEMO_ADMIN_PASSWORD', '');
+            if (strlen($password) < 12) {
+                $this->components->error('SCHOOLPILOT_DEMO_ADMIN_PASSWORD must contain at least 12 characters.');
+                return self::FAILURE;
+            }
+        } else {
+            $password = $this->secret('Set a temporary password for the school administrator (minimum 12 characters)');
+            if (! is_string($password) || strlen($password) < 12) {
+                $this->components->error('Administrator password must be at least 12 characters.');
+                return self::FAILURE;
+            }
 
-        $confirmation = $this->secret('Confirm administrator password');
-        if (! is_string($confirmation) || ! hash_equals($password, $confirmation)) {
-            $this->components->error('Passwords do not match.');
-            return self::FAILURE;
+            $confirmation = $this->secret('Confirm administrator password');
+            if (! is_string($confirmation) || ! hash_equals($password, $confirmation)) {
+                $this->components->error('Passwords do not match.');
+                return self::FAILURE;
+            }
         }
 
         $databaseName = $slug . '.sqlite';
