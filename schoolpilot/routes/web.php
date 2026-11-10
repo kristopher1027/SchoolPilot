@@ -122,7 +122,9 @@ Route::post('/login', function (Request $request) {
     }
 
     Config::set('database.connections.tenant_sqlite.database', $databasePath);
+    Config::set('database.default', 'tenant_sqlite');
     DB::purge('tenant_sqlite');
+    DB::setDefaultConnection('tenant_sqlite');
 
     $schoolUser = \App\Models\Tenant\User::query()->findOrFail($match['user_id']);
     Auth::guard('school')->login($schoolUser, $request->boolean('remember'));
