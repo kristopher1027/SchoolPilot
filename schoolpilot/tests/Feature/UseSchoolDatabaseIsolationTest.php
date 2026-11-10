@@ -57,6 +57,19 @@ class UseSchoolDatabaseIsolationTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::connection('central_sqlite')->create('sessions', function (Blueprint $table): void {
+            $table->string('id')->primary();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
+        });
+
+        Config::set('session.driver', 'database');
+        Config::set('session.connection', 'central_sqlite');
+        Config::set('session.table', 'sessions');
+
         $this->createTenantDatabase($this->alphaDatabaseName, 'Alpha School');
         $this->createTenantDatabase($this->betaDatabaseName, 'Beta School');
 
