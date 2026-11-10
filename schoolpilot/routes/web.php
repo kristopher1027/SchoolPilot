@@ -29,6 +29,9 @@ Route::get('/login', function () {
 });
 
 Route::post('/login', function (Request $request) {
+    // Preserve the application's default connection while inspecting tenant databases.
+    $previousDefaultConnection = Config::get('database.default');
+
     $credentials = $request->validate([
         'email' => ['required', 'email'],
         'password' => ['required', 'string'],
@@ -128,6 +131,7 @@ Route::post('/login', function (Request $request) {
 
     DB::purge('tenant_sqlite');
     Config::set('database.default', $previousDefaultConnection);
+    DB::setDefaultConnection($previousDefaultConnection);
     Config::set('database.connections.tenant_sqlite.database', null);
 
     return redirect('/school/' . $match['slug']);
