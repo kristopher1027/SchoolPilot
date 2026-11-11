@@ -101,7 +101,7 @@ class TenantLoginFlowTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $this->post('/login', [
+        $this->from('/login')->post('/login', [
             'email' => 'alpha-admin@example.test',
             'password' => 'Secure-Tenant-Password-2026',
         ])->assertRedirect('/login')
