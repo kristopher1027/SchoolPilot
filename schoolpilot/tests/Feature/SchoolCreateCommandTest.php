@@ -211,7 +211,31 @@ class SchoolCreateCommandTest extends TestCase
             $this->assertNotNull($administrator);
             $this->assertSame('school_admin', $administrator->role);
             $this->assertTrue(\Illuminate\Support\Facades\Hash::check('Secure-Test-Password-2026', $administrator->password));
-            $this->assertSame('Integration School', DB::connection('tenant_sqlite')->table('settings')->where('key', 'school_name')->value('value'));
+            $connection = DB::connection('tenant_sqlite');
+            $this->assertSame('Integration School', $connection->table('settings')->where('key', 'school_name')->value('value'));
+
+            $this->assertSame(['NURSERY', 'PRIMARY', 'SECONDARY'], $connection->table('sections')->orderBy('id')->pluck('code')->all());
+            $baselineCounts = [
+                'sections' => $connection->table('sections')->count(),
+                'assessment_components' => $connection->table('assessment_components')->count(),
+                'grading_scales' => $connection->table('grading_scales')->count(),
+                'grading_bands' => $connection->table('grading_bands')->count(),
+                'skills_rubrics' => $connection->table('skills_rubrics')->count(),
+            ];
+
+            // Re-running the tenant baseline seeder must not duplicate defaults
+            // or overwrite school-specific settings.
+            $this->artisan('db:seed', [
+                '--database' => 'tenant_sqlite',
+                '--class' => \\Database\\Seeders\\Tenant\\DatabaseSeeder::class,
+                '--force' => true,
+            ])->assertExitCode(0);
+
+            foreach ($baselineCounts as $table => $count) {
+                $this->assertSame($count, $connection->table($table)->count(), "Unexpected duplicate baseline rows in [{$table}].");
+            }
+
+            $this->assertSame('Integration School', $connection->table('settings')->where('key', 'school_name')->value('value'));
             $this->assertTrue(ProvisioningLog::query()->where('school_id', $tenant->id)->where('status', 'success')->exists());
         } finally {
             DB::purge('tenant_sqlite');
