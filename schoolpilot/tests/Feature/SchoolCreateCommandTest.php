@@ -227,7 +227,7 @@ class SchoolCreateCommandTest extends TestCase
             // or overwrite school-specific settings.
             $this->artisan('db:seed', [
                 '--database' => 'tenant_sqlite',
-                '--class' => \\Database\\Seeders\\Tenant\\DatabaseSeeder::class,
+                '--class' => \Database\Seeders\Tenant\DatabaseSeeder::class,
                 '--force' => true,
             ])->assertExitCode(0);
 
