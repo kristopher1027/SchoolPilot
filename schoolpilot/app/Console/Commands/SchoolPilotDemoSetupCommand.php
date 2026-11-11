@@ -54,6 +54,18 @@ class SchoolPilotDemoSetupCommand extends Command
                 DB::purge('tenant_sqlite');
                 DB::setDefaultConnection('tenant_sqlite');
 
+                // Backfill missing baseline records for the existing demo tenant.
+                // The tenant seeder is idempotent and does not overwrite school data.
+                $seedExitCode = $this->call('db:seed', [
+                    '--database' => 'tenant_sqlite',
+                    '--class' => \\Database\\Seeders\\Tenant\\DatabaseSeeder::class,
+                    '--force' => true,
+                ]);
+
+                if ($seedExitCode !== self::SUCCESS) {
+                    throw new \\RuntimeException('Demo school baseline setup could not be completed.');
+                }
+
                 $updated = DB::connection('tenant_sqlite')
                     ->table('users')
                     ->where('email', $email)
