@@ -21,6 +21,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Set the school database after the session starts but before route auth.
         $middleware->web(append: [UseSchoolDatabase::class]);
 
+        // Tenant resolution must run after StartSession but before auth middleware
+        // asks the school guard's user provider to load a tenant user.
+        $middleware->prependToPriorityList(
+            \\Illuminate\\Auth\\Middleware\\Authenticate::class,
+            UseSchoolDatabase::class,
+        );
+
         // API routes use their own authentication mechanism.
         $middleware->validateCsrfTokens(except: [
             'api/*',
