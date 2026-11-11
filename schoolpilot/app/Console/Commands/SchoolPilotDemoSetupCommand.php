@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Console\Commands;
+namespace App\\Console\\Commands;
 
-use App\Models\Platform\Tenant;
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
+use App\\Models\\Platform\\Tenant;
+use Illuminate\\Console\\Command;
+use Illuminate\\Support\\Facades\\Artisan;
+use Illuminate\\Support\\Facades\\Config;
+use Illuminate\\Support\\Facades\\DB;
+use Illuminate\\Support\\Facades\\Hash;
 
 class SchoolPilotDemoSetupCommand extends Command
 {
@@ -34,66 +34,75 @@ class SchoolPilotDemoSetupCommand extends Command
 
         $tenant = Tenant::query()->where('data->slug', $slug)->first();
 
-        if ($tenant) {
-            if ($tenant->status !== 'active' || ! $tenant->db_name) {
-                $this->components->error('The configured demo school is not active or has no database.');
+        if ($tenant && ($tenant->status !== 'active' || ! $tenant->db_name)) {
+            $this->components->error('The configured demo school is not active or has no database.');
+            return self::FAILURE;
+        }
+
+        // The original Greenfield demo predates central tenant registration.
+        // Middleware still maps this slug to greenfield.sqlite, so startup must
+        // backfill that same database rather than trying to provision a new one.
+        $legacyDatabaseName = $slug === 'greenfield' ? 'greenfield.sqlite' : null;
+        $legacyDatabasePath = $legacyDatabaseName
+            ? database_path('tenants/' . $legacyDatabaseName)
+            : null;
+
+        if (! $tenant && (! $legacyDatabasePath || ! is_file($legacyDatabasePath))) {
+            $exitCode = Artisan::call('school:create', [
+                'name' => $name,
+                'slug' => $slug,
+                'email' => $email,
+                '--demo' => true,
+            ]);
+
+            $this->output->write(Artisan::output());
+
+            return $exitCode === self::SUCCESS ? self::SUCCESS : self::FAILURE;
+        }
+
+        $databaseName = $tenant ? basename($tenant->db_name) : $legacyDatabaseName;
+        $databasePath = database_path('tenants/' . $databaseName);
+
+        if (! is_file($databasePath)) {
+            $this->components->error('The configured demo tenant database does not exist.');
+            return self::FAILURE;
+        }
+
+        $previousDefault = DB::getDefaultConnection();
+        $previousDatabase = Config::get('database.connections.tenant_sqlite.database');
+
+        try {
+            Config::set('database.connections.tenant_sqlite.database', $databasePath);
+            DB::purge('tenant_sqlite');
+            DB::setDefaultConnection('tenant_sqlite');
+
+            // This seeder only inserts missing defaults; existing school data is preserved.
+            $seedExitCode = $this->call('db:seed', [
+                '--database' => 'tenant_sqlite',
+                '--class' => \\Database\\Seeders\\Tenant\\DatabaseSeeder::class,
+                '--force' => true,
+            ]);
+
+            if ($seedExitCode !== self::SUCCESS) {
+                throw new \\RuntimeException('Demo school baseline setup could not be completed.');
+            }
+
+            $updated = DB::connection('tenant_sqlite')
+                ->table('users')
+                ->where('email', $email)
+                ->update(['password' => Hash::make($password), 'updated_at' => now()]);
+
+            if ($updated === 0 && ! DB::connection('tenant_sqlite')->table('users')->where('email', $email)->exists()) {
+                $this->components->error('The configured demo administrator account was not found.');
                 return self::FAILURE;
             }
 
-            $previousDefault = DB::getDefaultConnection();
-            $previousDatabase = Config::get('database.connections.tenant_sqlite.database');
-
-            try {
-                $databasePath = database_path('tenants/' . basename($tenant->db_name));
-                if (! is_file($databasePath)) {
-                    $this->components->error('The configured demo tenant database does not exist.');
-                    return self::FAILURE;
-                }
-
-                Config::set('database.connections.tenant_sqlite.database', $databasePath);
-                DB::purge('tenant_sqlite');
-                DB::setDefaultConnection('tenant_sqlite');
-
-                // Backfill missing baseline records for the existing demo tenant.
-                // The tenant seeder is idempotent and does not overwrite school data.
-                $seedExitCode = $this->call('db:seed', [
-                    '--database' => 'tenant_sqlite',
-                    '--class' => \Database\Seeders\Tenant\DatabaseSeeder::class,
-                    '--force' => true,
-                ]);
-
-                if ($seedExitCode !== self::SUCCESS) {
-                    throw new \RuntimeException('Demo school baseline setup could not be completed.');
-                }
-
-                $updated = DB::connection('tenant_sqlite')
-                    ->table('users')
-                    ->where('email', $email)
-                    ->update(['password' => Hash::make($password), 'updated_at' => now()]);
-
-                if ($updated === 0 && ! DB::connection('tenant_sqlite')->table('users')->where('email', $email)->exists()) {
-                    $this->components->error('The configured demo administrator account was not found.');
-                    return self::FAILURE;
-                }
-
-                $this->components->info('Demo administrator password refreshed from the protected environment variable.');
-                return self::SUCCESS;
-            } finally {
-                DB::setDefaultConnection($previousDefault);
-                DB::purge('tenant_sqlite');
-                Config::set('database.connections.tenant_sqlite.database', $previousDatabase);
-            }
+            $this->components->info('Demo school baseline data verified and demo administrator password refreshed.');
+            return self::SUCCESS;
+        } finally {
+            DB::setDefaultConnection($previousDefault);
+            DB::purge('tenant_sqlite');
+            Config::set('database.connections.tenant_sqlite.database', $previousDatabase);
         }
-
-        $exitCode = Artisan::call('school:create', [
-            'name' => $name,
-            'slug' => $slug,
-            'email' => $email,
-            '--demo' => true,
-        ]);
-
-        $this->output->write(Artisan::output());
-
-        return $exitCode === self::SUCCESS ? self::SUCCESS : self::FAILURE;
     }
 }
