@@ -24,7 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Tenant resolution must run after StartSession but before auth middleware
         // asks the school guard's user provider to load a tenant user.
         $middleware->prependToPriorityList(
-            \\Illuminate\\Auth\\Middleware\\Authenticate::class,
+            \Illuminate\Auth\Middleware\Authenticate::class,
             UseSchoolDatabase::class,
         );
 
