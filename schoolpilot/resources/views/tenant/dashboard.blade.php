@@ -30,9 +30,18 @@
     <div class="bg-white rounded-lg shadow p-6">
         <h4 class="text-lg font-bold text-gray-800 mb-4">Quick Actions</h4>
         <div class="flex flex-wrap gap-4">
-            <button class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition">Add New Student</button>
-            <button class="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition">Add Staff Member</button>
-            <button class="bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 transition">Setup New Session</button>
+            <a href="{{ url('/school/' . request()->route('school') . '/students/create') }}"
+               class="inline-flex items-center bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Add New Student
+            </a>
+            <a href="{{ url('/school/' . request()->route('school') . '/staff/create') }}"
+               class="inline-flex items-center bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 transition focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                Add Staff Member
+            </a>
+            <a href="{{ url('/school/' . request()->route('school') . '/academic') }}"
+               class="inline-flex items-center bg-purple-600 text-white px-4 py-2 rounded shadow hover:bg-purple-700 transition focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+                Setup New Session
+            </a>
         </div>
     </div>
 @endsection
