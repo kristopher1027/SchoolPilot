@@ -54,6 +54,9 @@ class StudentController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatedStudentData($request);
+        if (! $this->classBelongsToSection($data)) {
+            return back()->withErrors(['class_id' => 'The selected class does not belong to the selected section.'])->withInput();
+        }
         $data['status'] = 'active';
 
         $student = Student::create($data);
@@ -79,10 +82,24 @@ class StudentController extends Controller
 
     public function update(Request $request, Student $student)
     {
-        $student->update($this->validatedStudentData($request, $student));
+        $data = $this->validatedStudentData($request, $student);
+        if (! $this->classBelongsToSection($data)) {
+            return back()->withErrors(['class_id' => 'The selected class does not belong to the selected section.'])->withInput();
+        }
+        $student->update($data);
 
         return redirect('/school/' . $request->route('school') . '/students/' . $student->id)
             ->with('success', 'Student record updated successfully.');
+    }
+
+    private function classBelongsToSection(array $data): bool
+    {
+        if (empty($data['class_id'])) {
+            return true;
+        }
+
+        return SchoolClass::query()->whereKey($data['class_id'])
+            ->where('section_id', $data['section_id'])->exists();
     }
 
     private function validatedStudentData(Request $request, ?Student $student = null): array
@@ -109,15 +126,7 @@ class StudentController extends Controller
             'allergies' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        if (! empty($data['class_id'])) {
-            $class = SchoolClass::query()->findOrFail($data['class_id']);
 
-            if ((int) $class->section_id !== (int) $data['section_id']) {
-                return back()->withErrors([
-                    'class_id' => 'The selected class does not belong to the selected section.',
-                ])->withInput()->throwResponse();
-            }
-        }
 
         return $data;
     }
