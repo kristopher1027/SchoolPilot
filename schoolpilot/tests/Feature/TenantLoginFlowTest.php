@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -74,6 +75,9 @@ class TenantLoginFlowTest extends TestCase
             'email' => 'alpha-admin@example.test',
             'password' => 'Secure-Tenant-Password-2026',
         ])->assertRedirect('/school/alpha');
+
+        // Simulate the fresh PHP request lifecycle used by a browser.
+        Auth::forgetGuards();
 
         $this->get('/school/alpha')
             ->assertRedirect('/school/alpha/dashboard');
