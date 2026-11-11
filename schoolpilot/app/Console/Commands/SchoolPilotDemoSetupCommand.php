@@ -1,13 +1,13 @@
 <?php
 
-namespace App\\Console\\Commands;
+namespace App\Console\Commands;
 
-use App\\Models\\Platform\\Tenant;
-use Illuminate\\Console\\Command;
-use Illuminate\\Support\\Facades\\Artisan;
-use Illuminate\\Support\\Facades\\Config;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Facades\\Hash;
+use App\Models\Platform\Tenant;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class SchoolPilotDemoSetupCommand extends Command
 {
@@ -79,12 +79,12 @@ class SchoolPilotDemoSetupCommand extends Command
             // This seeder only inserts missing defaults; existing school data is preserved.
             $seedExitCode = $this->call('db:seed', [
                 '--database' => 'tenant_sqlite',
-                '--class' => \\Database\\Seeders\\Tenant\\DatabaseSeeder::class,
+                '--class' => \Database\Seeders\Tenant\DatabaseSeeder::class,
                 '--force' => true,
             ]);
 
             if ($seedExitCode !== self::SUCCESS) {
-                throw new \\RuntimeException('Demo school baseline setup could not be completed.');
+                throw new \RuntimeException('Demo school baseline setup could not be completed.');
             }
 
             $updated = DB::connection('tenant_sqlite')
