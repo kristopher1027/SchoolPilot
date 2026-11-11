@@ -71,7 +71,7 @@ class TenantLoginFlowTest extends TestCase
 
     public function test_login_redirects_to_the_matching_school_and_keeps_the_session_authenticated(): void
     {
-        $this->post('/login', [
+        $this->from('/login')->post('/login', [
             'email' => 'alpha-admin@example.test',
             'password' => 'Secure-Tenant-Password-2026',
         ])->assertRedirect('/school/alpha');
