@@ -58,12 +58,12 @@ class SchoolPilotDemoSetupCommand extends Command
                 // The tenant seeder is idempotent and does not overwrite school data.
                 $seedExitCode = $this->call('db:seed', [
                     '--database' => 'tenant_sqlite',
-                    '--class' => \\Database\\Seeders\\Tenant\\DatabaseSeeder::class,
+                    '--class' => \Database\Seeders\Tenant\DatabaseSeeder::class,
                     '--force' => true,
                 ]);
 
                 if ($seedExitCode !== self::SUCCESS) {
-                    throw new \\RuntimeException('Demo school baseline setup could not be completed.');
+                    throw new \RuntimeException('Demo school baseline setup could not be completed.');
                 }
 
                 $updated = DB::connection('tenant_sqlite')
