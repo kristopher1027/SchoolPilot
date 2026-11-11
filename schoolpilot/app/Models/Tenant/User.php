@@ -7,6 +7,11 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
+    /**
+     * Tenant users must always be loaded from the currently selected school database.
+     */
+    protected $connection = 'tenant_sqlite';
+
     use Notifiable;
 
     protected $fillable = [

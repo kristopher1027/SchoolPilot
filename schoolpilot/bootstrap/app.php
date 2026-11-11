@@ -20,6 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Set the school database after the session starts but before route auth.
         $middleware->web(append: [UseSchoolDatabase::class]);
+        // Resolve the tenant after the session starts and before Authenticate
+        // loads the school user from the tenant SQLite connection.
+        $middleware->appendToPriorityList(
+            \Illuminate\Session\Middleware\StartSession::class,
+            UseSchoolDatabase::class,
+        );
 
         // API routes use their own authentication mechanism.
         $middleware->validateCsrfTokens(except: [
