@@ -7,6 +7,7 @@ use App\Http\Controllers\Tenant\ScoreController;
 use App\Http\Controllers\Tenant\ResultController;
 use App\Http\Controllers\Tenant\TeacherController;
 use App\Http\Controllers\Tenant\AssignmentController;
+use App\Http\Controllers\Tenant\AttendanceController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Tenant\AcademicSession;
@@ -201,6 +202,11 @@ Route::prefix('school/{school}')->group(function () {
 
                 Route::get('/assignments', [AssignmentController::class, 'index']);
                 Route::post('/assignments', [AssignmentController::class, 'store']);
+            });
+
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal,dean,hod,class_teacher')->group(function () {
+                Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
+                Route::post('/attendance', [AttendanceController::class, 'store'])->name('attendance.store');
             });
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,dean,hod,class_teacher,subject_teacher')->group(function () {
