@@ -2,12 +2,12 @@
 
 @section('content')
     <div class="mb-6 flex items-center space-x-4">
-        <a href="/school/greenfield/students" class="text-blue-600 hover:underline">&larr; Back to List</a>
+        <a href="{{ url('/school/' . request()->route('school')) }}/students" class="text-blue-600 hover:underline">&larr; Back to List</a>
         <h3 class="text-2xl font-bold text-gray-800">Enroll New Student</h3>
     </div>
 
     <div class="bg-white rounded-lg shadow p-6 max-w-3xl">
-        <form method="POST" action="/school/greenfield/students">
+        <form method="POST" action="{{ url('/school/' . request()->route('school')) }}/students">
             @csrf
             
             @if($errors->any())
