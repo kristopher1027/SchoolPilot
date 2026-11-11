@@ -187,6 +187,9 @@ Route::prefix('school/{school}')->group(function () {
                 Route::get('/students', [StudentController::class, 'index']);
                 Route::get('/students/create', [StudentController::class, 'create']);
                 Route::post('/students', [StudentController::class, 'store']);
+                Route::get('/students/{student}', [StudentController::class, 'show'])->whereNumber('student');
+                Route::get('/students/{student}/edit', [StudentController::class, 'edit'])->whereNumber('student');
+                Route::put('/students/{student}', [StudentController::class, 'update'])->whereNumber('student');
             });
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
