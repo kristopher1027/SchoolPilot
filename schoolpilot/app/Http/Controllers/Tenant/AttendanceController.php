@@ -1,16 +1,16 @@
 <?php
 
-namespace App\\Http\\Controllers\\Tenant;
+namespace App\Http\Controllers\Tenant;
 
-use App\\Http\\Controllers\\Controller;
-use App\\Models\\Tenant\\AttendanceRecord;
-use App\\Models\\Tenant\\SchoolClass;
-use App\\Models\\Tenant\\Staff;
-use App\\Models\\Tenant\\Student;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Facades\\Auth;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Validation\\Rule;
+use App\Http\Controllers\Controller;
+use App\Models\Tenant\AttendanceRecord;
+use App\Models\Tenant\SchoolClass;
+use App\Models\Tenant\Staff;
+use App\Models\Tenant\Student;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class AttendanceController extends Controller
 {
