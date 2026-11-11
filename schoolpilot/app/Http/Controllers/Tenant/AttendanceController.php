@@ -129,7 +129,7 @@ class AttendanceController extends Controller
             }
         });
 
-        return redirect()->route('school.attendance.index', [
+        return redirect()->route('attendance.index', [
             'school' => $request->route('school'),
             'class_id' => $class->id,
             'date' => $data['date'],
