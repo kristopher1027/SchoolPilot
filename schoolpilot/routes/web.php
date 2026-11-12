@@ -9,6 +9,7 @@ use App\Http\Controllers\Tenant\ResultController;
 use App\Http\Controllers\Tenant\TeacherController;
 use App\Http\Controllers\Tenant\AssignmentController;
 use App\Http\Controllers\Tenant\AttendanceController;
+use App\Http\Controllers\Tenant\TimetableController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Tenant\AcademicSession;
