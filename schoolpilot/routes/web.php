@@ -9,6 +9,7 @@ use App\Http\Controllers\Tenant\ResultController;
 use App\Http\Controllers\Tenant\TeacherController;
 use App\Http\Controllers\Tenant\AssignmentController;
 use App\Http\Controllers\Tenant\AttendanceController;
+use App\Http\Controllers\Tenant\AnnouncementController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Tenant\AcademicSession;
@@ -156,6 +157,15 @@ Route::prefix('school/{school}')->group(function () {
         });
 
         Route::middleware(['auth:school', EnsureActiveUser::class])->group(function () {
+            Route::get('/announcements', [AnnouncementController::class, 'index']);
+            Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show'])->whereNumber('announcement');
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
+                Route::get('/announcements/create', [AnnouncementController::class, 'create']);
+                Route::post('/announcements', [AnnouncementController::class, 'store']);
+                Route::post('/announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])->whereNumber('announcement');
+                Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->whereNumber('announcement');
+            });
+
             Route::post('/logout', function (Request $request) {
                 Auth::guard('school')->logout();
                 $request->session()->invalidate();
