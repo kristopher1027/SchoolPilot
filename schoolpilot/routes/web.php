@@ -12,6 +12,7 @@ use App\Http\Controllers\Tenant\AttendanceController;
 use App\Http\Controllers\Tenant\TimetableController;
 use App\Http\Controllers\Tenant\AnnouncementController;
 use App\Http\Controllers\Tenant\FeeController;
+use App\Http\Controllers\Tenant\AdmissionController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Tenant\AcademicSession;
@@ -145,6 +146,9 @@ Route::post('/login', function (Request $request) {
 })->middleware('throttle:5,1');
 
 Route::prefix('school/{school}')->group(function () {
+        Route::get('/admissions/apply', [AdmissionController::class, 'apply']);
+        Route::post('/admissions/apply', [AdmissionController::class, 'submitApplication'])->middleware('throttle:5,1');
+
         // Keep old school-specific login bookmarks working after the universal login change.
         Route::get('/login', fn () => redirect('/login'));
 
@@ -211,6 +215,13 @@ Route::prefix('school/{school}')->group(function () {
                 Route::post('/parents', [GuardianController::class, 'store']);
                 Route::get('/parents/{guardian}/edit', [GuardianController::class, 'edit'])->whereNumber('guardian');
                 Route::put('/parents/{guardian}', [GuardianController::class, 'update'])->whereNumber('guardian');
+            });
+
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal,dean')->group(function () {
+                Route::get('/admissions', [AdmissionController::class, 'index']);
+                Route::get('/admissions/{application}', [AdmissionController::class, 'show'])->whereNumber('application');
+                Route::put('/admissions/{application}/review', [AdmissionController::class, 'review'])->whereNumber('application');
+                Route::post('/admissions/{application}/convert', [AdmissionController::class, 'convert'])->whereNumber('application');
             });
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
