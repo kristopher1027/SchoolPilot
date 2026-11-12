@@ -190,6 +190,13 @@ Route::prefix('school/{school}')->group(function () {
                 Route::get('/students/{student}', [StudentController::class, 'show'])->whereNumber('student');
                 Route::get('/students/{student}/edit', [StudentController::class, 'edit'])->whereNumber('student');
                 Route::put('/students/{student}', [StudentController::class, 'update'])->whereNumber('student');
+                Route::post('/students/{student}/guardians', [GuardianController::class, 'attachToStudent'])->whereNumber('student');
+                Route::delete('/students/{student}/guardians/{guardian}', [GuardianController::class, 'detachFromStudent'])->whereNumber('student')->whereNumber('guardian');
+                Route::get('/parents', [GuardianController::class, 'index']);
+                Route::get('/parents/create', [GuardianController::class, 'create']);
+                Route::post('/parents', [GuardianController::class, 'store']);
+                Route::get('/parents/{guardian}/edit', [GuardianController::class, 'edit'])->whereNumber('guardian');
+                Route::put('/parents/{guardian}', [GuardianController::class, 'update'])->whereNumber('guardian');
             });
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
