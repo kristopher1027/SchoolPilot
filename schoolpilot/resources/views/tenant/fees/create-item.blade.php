@@ -1,0 +1,13 @@
+@extends('tenant.layouts.app')
+@section('content')
+<div class="mb-6"><a class="text-sm text-blue-700" href="{{ url('/school/' . request()->route('school') . '/fees') }}">← Fees & Payments</a><h3 class="mt-2 text-2xl font-bold">Create Fee Item</h3><p class="text-sm text-gray-500">Define a charge for a school session and term.</p></div>
+@if($errors->any())<div class="mb-5 rounded bg-red-50 p-4 text-red-700"><ul class="list-disc pl-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+<form method="POST" action="{{ url('/school/' . request()->route('school') . '/fees/items') }}" class="max-w-2xl space-y-5 rounded-lg bg-white p-6 shadow">@csrf
+<div><label class="mb-1 block text-sm font-medium">Fee name</label><input name="name" required maxlength="160" value="{{ old('name') }}" placeholder="e.g. Tuition Fee" class="w-full rounded border-gray-300"></div>
+<div><label class="mb-1 block text-sm font-medium">Amount (₦)</label><input type="number" name="amount" min="0.01" step="0.01" required value="{{ old('amount') }}" class="w-full rounded border-gray-300"></div>
+<div><label class="mb-1 block text-sm font-medium">Academic session</label><select name="academic_session_id" required class="w-full rounded border-gray-300"><option value="">Select session</option>@foreach($sessions as $session)<option value="{{ $session->id }}" @selected(old('academic_session_id') == $session->id)>{{ $session->name }}</option>@endforeach</select></div>
+<div><label class="mb-1 block text-sm font-medium">Term</label><select name="term_id" required class="w-full rounded border-gray-300"><option value="">Select term</option>@foreach($terms as $term)<option value="{{ $term->id }}" @selected(old('term_id') == $term->id)>{{ $term->academicSession?->name }} — {{ $term->name }}</option>@endforeach</select></div>
+<div><label class="mb-1 block text-sm font-medium">Class (optional)</label><select name="class_id" class="w-full rounded border-gray-300"><option value="">All classes / sections</option>@foreach($classes as $class)<option value="{{ $class->id }}" @selected(old('class_id') == $class->id)>{{ $class->section?->name }} — {{ $class->name }}</option>@endforeach</select><p class="mt-1 text-xs text-gray-500">Leave blank to make the fee available to all students.</p></div>
+<div class="flex gap-3"><button class="rounded bg-blue-700 px-5 py-2 text-white">Save Fee Item</button><a class="rounded border px-5 py-2" href="{{ url('/school/' . request()->route('school') . '/fees') }}">Cancel</a></div>
+</form>
+@endsection
