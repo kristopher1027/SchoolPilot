@@ -206,6 +206,7 @@ Route::prefix('school/{school}')->group(function () {
                 Route::post('/students/{student}/guardians', [GuardianController::class, 'attachToStudent'])->whereNumber('student');
                 Route::delete('/students/{student}/guardians/{guardian}', [GuardianController::class, 'detachFromStudent'])->whereNumber('student')->whereNumber('guardian');
                 Route::get('/parents', [GuardianController::class, 'index']);
+                Route::get('/parents/{guardian}', [GuardianController::class, 'show'])->whereNumber('guardian');
                 Route::get('/parents/create', [GuardianController::class, 'create']);
                 Route::post('/parents', [GuardianController::class, 'store']);
                 Route::get('/parents/{guardian}/edit', [GuardianController::class, 'edit'])->whereNumber('guardian');
