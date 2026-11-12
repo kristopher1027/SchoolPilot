@@ -1,0 +1,19 @@
+@extends('tenant.layouts.app')
+@section('content')
+<div class="mb-6"><a href="{{ url('/school/' . request()->route('school') . '/timetable') }}" class="text-sm text-blue-700">← Timetable</a><h3 class="mt-2 text-2xl font-bold">Add Timetable Lesson</h3><p class="text-sm text-gray-500">Only assigned teachers can be scheduled. Class, teacher and room clashes are checked.</p></div>
+@if($errors->any())<div class="mb-5 rounded bg-red-50 p-4 text-red-700"><ul class="list-disc pl-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+<form method="POST" action="{{ url('/school/' . request()->route('school') . '/timetable') }}" class="max-w-3xl space-y-5 rounded-lg bg-white p-6 shadow">@csrf
+<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+<div><label class="mb-1 block text-sm font-medium">Academic session</label><select name="academic_session_id" required class="w-full rounded border-gray-300"><option value="">Select session</option>@foreach($sessions as $session)<option value="{{ $session->id }}" @selected(old('academic_session_id') == $session->id)>{{ $session->name }}</option>@endforeach</select></div>
+<div><label class="mb-1 block text-sm font-medium">Term</label><select name="term_id" required class="w-full rounded border-gray-300"><option value="">Select term</option>@foreach($terms as $term)<option value="{{ $term->id }}" @selected(old('term_id') == $term->id)>{{ $term->academicSession?->name }} — {{ $term->name }}</option>@endforeach</select></div>
+<div><label class="mb-1 block text-sm font-medium">Class</label><select name="class_id" required class="w-full rounded border-gray-300"><option value="">Select class</option>@foreach($classes as $class)<option value="{{ $class->id }}" @selected(old('class_id') == $class->id)>{{ $class->section?->name }} — {{ $class->name }}</option>@endforeach</select></div>
+<div><label class="mb-1 block text-sm font-medium">Subject</label><select name="subject_id" required class="w-full rounded border-gray-300"><option value="">Select subject</option>@foreach($subjects as $subject)<option value="{{ $subject->id }}" @selected(old('subject_id') == $subject->id)>{{ $subject->name }}</option>@endforeach</select></div>
+<div><label class="mb-1 block text-sm font-medium">Teacher</label><select name="staff_id" required class="w-full rounded border-gray-300"><option value="">Select assigned teacher</option>@foreach($staff as $member)<option value="{{ $member->id }}" @selected(old('staff_id') == $member->id)>{{ $member->user?->name }} — {{ $member->designation }}</option>@endforeach</select></div>
+<div><label class="mb-1 block text-sm font-medium">Day</label><select name="day_of_week" required class="w-full rounded border-gray-300"><option value="">Select day</option>@foreach($days as $day)<option value="{{ $day }}" @selected(old('day_of_week') === $day)>{{ $day }}</option>@endforeach</select></div>
+<div><label class="mb-1 block text-sm font-medium">Start time</label><input type="time" name="start_time" required value="{{ old('start_time') }}" class="w-full rounded border-gray-300"></div>
+<div><label class="mb-1 block text-sm font-medium">End time</label><input type="time" name="end_time" required value="{{ old('end_time') }}" class="w-full rounded border-gray-300"></div>
+<div class="md:col-span-2"><label class="mb-1 block text-sm font-medium">Room / Venue (optional)</label><input name="room" maxlength="80" value="{{ old('room') }}" class="w-full rounded border-gray-300" placeholder="e.g. Science Laboratory"></div>
+</div>
+<div class="flex gap-3"><button class="rounded bg-blue-700 px-5 py-2 text-white">Save Lesson</button><a href="{{ url('/school/' . request()->route('school') . '/timetable') }}" class="rounded border px-5 py-2">Cancel</a></div>
+</form>
+@endsection
