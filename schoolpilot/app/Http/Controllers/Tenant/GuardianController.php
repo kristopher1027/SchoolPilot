@@ -106,9 +106,8 @@ class GuardianController extends Controller
                 DB::table('student_parents')->where('student_id', $student->id)->update(['is_primary' => false]);
             }
 
-            $student->guardians()->syncWithoutDetaching([
-                $guardianId => ['is_primary' => $isPrimary],
-            ]);
+            $student->guardians()->syncWithoutDetaching([$guardianId]);
+            $student->guardians()->updateExistingPivot($guardianId, ['is_primary' => $isPrimary]);
         });
 
         return back()->with('success', 'Guardian linked to student.');
