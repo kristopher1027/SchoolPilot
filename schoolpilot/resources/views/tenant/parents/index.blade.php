@@ -37,7 +37,7 @@
                         <td class="px-4 py-3 text-sm text-gray-600">{{ $guardian->user?->email }}<br>{{ $guardian->user?->phone ?: '—' }}</td>
                         <td class="px-4 py-3 text-sm text-gray-600">{{ $guardian->relationship ?: '—' }}</td>
                         <td class="px-4 py-3 text-sm text-gray-600">{{ $guardian->students_count }}</td>
-                        <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline" href="{{ url('/school/' . request()->route('school') . '/parents/' . $guardian->id . '/edit') }}">Edit</a></td>
+                        <td class="px-4 py-3 text-right"><a class="text-blue-600 hover:underline" href="{{ url('/school/' . request()->route('school') . '/parents/' . $guardian->id) }}">View profile</a><span class="mx-2 text-gray-300">|</span><a class="text-blue-600 hover:underline" href="{{ url('/school/' . request()->route('school') . '/parents/' . $guardian->id . '/edit') }}">Edit</a></td>
                     </tr>
                 @empty
                     <tr><td colspan="5" class="px-6 py-10 text-center text-gray-500">No parent or guardian records found.</td></tr>
