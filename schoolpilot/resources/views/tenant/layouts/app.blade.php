@@ -15,6 +15,8 @@
                 <h1 class="text-xl font-bold tracking-wider">SchoolPilot</h1>
             </div>
                        <nav class="flex-1 p-4 space-y-2 text-sm">
+                <a href="/school/{{ request()->route('school') }}/announcements" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Noticeboard</a>
+
                 {{-- Dashboard is for everyone --}}
                 <a href="/school/greenfield/dashboard" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Dashboard</a>
 
