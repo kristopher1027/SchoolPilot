@@ -9,6 +9,7 @@ use App\Models\Tenant\Invoice;
 use App\Models\Tenant\Payment;
 use App\Models\Tenant\SchoolClass;
 use App\Models\Tenant\Staff;
+use App\Models\Tenant\Section;
 use App\Models\Tenant\Student;
 use App\Models\Tenant\Term;
 use Illuminate\Http\Request;
@@ -40,8 +41,9 @@ class FeeController extends Controller
         $sessions = AcademicSession::orderByDesc('start_date')->get();
         $terms = Term::with('academicSession')->orderBy('start_date')->get();
         $classes = SchoolClass::with('section')->orderBy('name')->get();
+        $sections = Section::orderBy('name')->get();
 
-        return view('tenant.fees.create-item', compact('sessions', 'terms', 'classes'));
+        return view('tenant.fees.create-item', compact('sessions', 'terms', 'classes', 'sections'));
     }
 
     public function storeFeeItem(Request $request)
@@ -52,6 +54,7 @@ class FeeController extends Controller
             'academic_session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
             'term_id' => ['required', 'integer', 'exists:terms,id'],
             'class_id' => ['nullable', 'integer', 'exists:classes,id'],
+            'section_id' => ['nullable', 'integer', 'exists:sections,id'],
         ]);
 
         $term = Term::findOrFail($data['term_id']);
@@ -60,17 +63,23 @@ class FeeController extends Controller
         }
 
         $class = isset($data['class_id']) ? SchoolClass::findOrFail($data['class_id']) : null;
+        if ($class && ! empty($data['section_id']) && (int) $class->section_id !== (int) $data['section_id']) {
+            throw ValidationException::withMessages(['class_id' => 'The selected class does not belong to the selected section.']);
+        }
+        $sectionId = $class?->section_id ?? ($data['section_id'] ?? null);
 
-        $item = FeeItem::create([
+        $item = DB::transaction(function () use ($data, $class, $sectionId) {
+            $item = FeeItem::create([
             'name' => $data['name'],
             'amount' => $data['amount'],
             'academic_session_id' => $data['academic_session_id'],
             'term_id' => $data['term_id'],
             'class_id' => $class?->id,
-            'section_id' => $class?->section_id,
-        ]);
-
-        $this->audit('fee_item.created', 'fee_item', $item->id, null, $item->only(['name', 'amount', 'academic_session_id', 'term_id', 'class_id']));
+                'section_id' => $sectionId,
+            ]);
+            $this->audit('fee_item.created', 'fee_item', $item->id, null, $item->only(['name', 'amount', 'academic_session_id', 'term_id', 'class_id', 'section_id']));
+            return $item;
+        });
 
         return redirect($this->schoolPath($request, '/fees'))->with('success', 'Fee item created successfully.');
     }
@@ -144,14 +153,13 @@ class FeeController extends Controller
                 ]);
             }
 
+            $this->audit('invoice.created', 'invoice', $invoice->id, null, [
+                'student_id' => $student->id,
+                'total_amount' => $invoice->total_amount,
+                'term_id' => $invoice->term_id,
+            ]);
             return $invoice;
         });
-
-        $this->audit('invoice.created', 'invoice', $invoice->id, null, [
-            'student_id' => $student->id,
-            'total_amount' => $invoice->total_amount,
-            'term_id' => $invoice->term_id,
-        ]);
 
         return redirect($this->schoolPath($request, '/fees/invoices/' . $invoice->id))
             ->with('success', 'Invoice issued successfully.');
@@ -204,15 +212,14 @@ class FeeController extends Controller
                 'status' => $newBalance <= 0 ? 'paid' : 'partial',
             ]);
 
+            $this->audit('payment.recorded', 'payment', $payment->id, null, [
+                'invoice_id' => $lockedInvoice->id,
+                'amount' => $payment->amount,
+                'method' => $payment->method,
+                'receipt_no' => $payment->receipt_no,
+            ]);
             return $payment;
         });
-
-        $this->audit('payment.recorded', 'payment', $payment->id, null, [
-            'invoice_id' => $invoice->id,
-            'amount' => $payment->amount,
-            'method' => $payment->method,
-            'receipt_no' => $payment->receipt_no,
-        ]);
 
         return redirect($this->schoolPath($request, '/fees/receipts/' . $payment->id))
             ->with('success', 'Payment recorded. Receipt generated.');
