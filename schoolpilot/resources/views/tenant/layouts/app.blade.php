@@ -20,6 +20,10 @@
                 {{-- Dashboard is for everyone --}}
                 <a href="/school/greenfield/dashboard" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Dashboard</a>
 
+                @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'dean']))
+                    <a href="/school/{{ request()->route('school') }}/admissions" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Admissions</a>
+                @endif
+
                 {{-- Admin, Principal, Dean can see Students --}}
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'dean']))
                     <a href="/school/greenfield/students" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Students</a>
