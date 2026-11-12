@@ -46,7 +46,7 @@ class AdmissionController extends Controller
 
         $application = DB::transaction(function () use ($data) {
             $application = AdmissionApplication::create($data + [
-                'application_no' => 'PENDING-' . str()->uuid(),
+                'application_no' => 'PENDING-' . \Illuminate\Support\Str::uuid(),
                 'status' => 'submitted',
             ]);
             $application->update([
