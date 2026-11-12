@@ -62,6 +62,19 @@ class GuardianController extends Controller
             ->with('success', 'Parent/guardian record created. Link the guardian to the relevant student profile.');
     }
 
+    public function show(Guardian $guardian)
+    {
+        $guardian->load([
+            'user',
+            'students' => fn ($query) => $query
+                ->with(['section', 'schoolClass'])
+                ->orderBy('last_name')
+                ->orderBy('first_name'),
+        ]);
+
+        return view('tenant.parents.show', compact('guardian'));
+    }
+
     public function edit(Guardian $guardian)
     {
         $guardian->load('user');
