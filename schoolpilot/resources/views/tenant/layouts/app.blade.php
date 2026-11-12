@@ -34,6 +34,10 @@
                     <a href="/school/greenfield/assignments" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Teacher Assignments</a>
                 @endif
 
+                @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'bursar']))
+                    <a href="/school/{{ request()->route('school') }}/fees" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Fees & Payments</a>
+                @endif
+
                 {{-- Attendance for school leadership and class teachers --}}
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'dean', 'hod', 'class_teacher']))
                     <a href="/school/{{ request()->route('school') }}/attendance" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Attendance</a>
