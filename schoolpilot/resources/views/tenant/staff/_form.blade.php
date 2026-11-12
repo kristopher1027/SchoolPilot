@@ -1,0 +1,13 @@
+@if($errors->any())<div class="bg-red-100 text-red-700 p-4 rounded mb-5"><ul class="list-disc pl-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+<div><label class="block text-sm font-medium">Full name</label><input name="name" required value="{{ old('name', $staff->user?->name ?? '') }}" class="mt-1 w-full rounded-md border-gray-300"></div>
+<div><label class="block text-sm font-medium">Email</label><input type="email" name="email" required value="{{ old('email', $staff->user?->email ?? '') }}" class="mt-1 w-full rounded-md border-gray-300"></div>
+<div><label class="block text-sm font-medium">Phone</label><input name="phone" value="{{ old('phone', $staff->user?->phone ?? '') }}" class="mt-1 w-full rounded-md border-gray-300"></div>
+<div><label class="block text-sm font-medium">System role</label><select name="role" required class="mt-1 w-full rounded-md border-gray-300">@foreach($roles as $role)<option value="{{ $role }}" @selected(old('role', $staff->user?->role ?? '') === $role)>{{ ucwords(str_replace('_', ' ', $role)) }}</option>@endforeach</select></div>
+<div><label class="block text-sm font-medium">Staff number</label><input name="staff_no" required value="{{ old('staff_no', $staff->staff_no) }}" class="mt-1 w-full rounded-md border-gray-300"></div>
+<div><label class="block text-sm font-medium">Designation</label><input name="designation" value="{{ old('designation', $staff->designation) }}" class="mt-1 w-full rounded-md border-gray-300"></div>
+<div><label class="block text-sm font-medium">Date hired</label><input type="date" name="date_hired" value="{{ old('date_hired', $staff->date_hired?->format('Y-m-d')) }}" class="mt-1 w-full rounded-md border-gray-300"></div>
+<div><label class="block text-sm font-medium">Qualification</label><input name="qualification" value="{{ old('qualification', $staff->qualification) }}" class="mt-1 w-full rounded-md border-gray-300"></div>
+<div class="md:col-span-2"><label class="block text-sm font-medium">Address</label><textarea name="address" rows="2" class="mt-1 w-full rounded-md border-gray-300">{{ old('address', $staff->address) }}</textarea></div>
+<div class="md:col-span-2"><span class="block text-sm font-medium mb-2">Departments</span><div class="grid grid-cols-1 sm:grid-cols-2 gap-2">@foreach($departments as $department)<label class="flex items-center gap-2 text-sm"><input type="checkbox" name="department_ids[]" value="{{ $department->id }}" @checked(in_array($department->id, old('department_ids', $selectedDepartmentIds)))> {{ $department->name }}</label>@endforeach</div></div>
+</div>

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Tenant\StudentController;
+use App\Http\Controllers\Tenant\GuardianController;
 use App\Http\Controllers\Tenant\StaffController;
 use App\Http\Controllers\Tenant\AcademicController;
 use App\Http\Controllers\Tenant\ScoreController;
@@ -203,6 +204,10 @@ Route::prefix('school/{school}')->group(function () {
                 Route::get('/staff', [StaffController::class, 'index']);
                 Route::get('/staff/create', [StaffController::class, 'create']);
                 Route::post('/staff', [StaffController::class, 'store']);
+                Route::get('/staff/{staff}', [StaffController::class, 'show'])->whereNumber('staff');
+                Route::get('/staff/{staff}/edit', [StaffController::class, 'edit'])->whereNumber('staff');
+                Route::put('/staff/{staff}', [StaffController::class, 'update'])->whereNumber('staff');
+                Route::post('/staff/{staff}/status', [StaffController::class, 'toggleStatus'])->whereNumber('staff');
 
                 Route::get('/academic', [AcademicController::class, 'index']);
                 Route::post('/academic/sessions', [AcademicController::class, 'storeSession']);
