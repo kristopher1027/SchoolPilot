@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant\Student;
+use App\Models\Tenant\Guardian;
 use App\Models\Tenant\SchoolClass;
 use App\Models\Tenant\Section;
 use Illuminate\Http\Request;
@@ -68,7 +69,7 @@ class StudentController extends Controller
     public function show(Request $request, Student $student)
     {
         $student->load(['section', 'schoolClass', 'guardians.user']);
-        $availableGuardians = \\App\\Models\\Tenant\\Guardian::query()->with('user')->orderBy('id')->get();
+        $availableGuardians = Guardian::query()->with('user')->orderBy('id')->get();
 
         return view('tenant.students.show', compact('student', 'availableGuardians'));
     }
