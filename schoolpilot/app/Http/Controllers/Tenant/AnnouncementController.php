@@ -14,10 +14,13 @@ class AnnouncementController extends Controller
     public function index()
     {
         $user = Auth::guard('school')->user();
-        $announcements = Announcement::with('author')
-            ->visibleTo($user)
-            ->latest('published_at')
-            ->paginate(15);
+        $query = Announcement::with('author')->visibleTo($user);
+        if (in_array($user->role, ['school_admin', 'principal'], true)) {
+            $query->orWhere(function ($drafts) use ($user) {
+                $drafts->where('status', 'draft')->where('author_id', $user->id);
+            });
+        }
+        $announcements = $query->latest('published_at')->latest()->paginate(15);
 
         $canManage = in_array($user->role, ['school_admin', 'principal'], true);
 
@@ -57,13 +60,29 @@ class AnnouncementController extends Controller
     public function show(Announcement $announcement)
     {
         $user = Auth::guard('school')->user();
-        if (! Announcement::query()->visibleTo($user)->whereKey($announcement->id)->exists()) {
+        $canView = Announcement::query()->visibleTo($user)->whereKey($announcement->id)->exists();
+        $canViewOwnDraft = $announcement->status === 'draft'
+            && $announcement->author_id === $user->id
+            && in_array($user->role, ['school_admin', 'principal'], true);
+        if (! $canView && ! $canViewOwnDraft) {
             abort(404);
         }
 
         $announcement->load('author');
 
         return view('tenant.announcements.show', compact('announcement'));
+    }
+
+    public function publish(Request $request, Announcement $announcement)
+    {
+        if ($announcement->status !== 'draft') {
+            throw ValidationException::withMessages(['announcement' => 'Only draft announcements can be published.']);
+        }
+
+        $announcement->update(['status' => 'published', 'published_at' => now()]);
+
+        return redirect('/school/' . $request->route('school') . '/announcements/' . $announcement->id)
+            ->with('success', 'Announcement published.');
     }
 
     public function destroy(Request $request, Announcement $announcement)
