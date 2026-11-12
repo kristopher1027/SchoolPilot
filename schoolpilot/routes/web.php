@@ -219,6 +219,14 @@ Route::prefix('school/{school}')->group(function () {
                 Route::post('/assignments', [AssignmentController::class, 'store']);
             });
 
+            Route::get('/timetable', [TimetableController::class, 'index'])
+                ->middleware(RoleMiddleware::class . ':school_admin,principal,vice_principal,dean,hod,class_teacher,subject_teacher');
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
+                Route::get('/timetable/create', [TimetableController::class, 'create']);
+                Route::post('/timetable', [TimetableController::class, 'store']);
+                Route::delete('/timetable/{entry}', [TimetableController::class, 'destroy'])->whereNumber('entry');
+            });
+
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,dean,hod,class_teacher')->group(function () {
                 Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
                 Route::post('/attendance', [AttendanceController::class, 'store'])->name('attendance.store');
