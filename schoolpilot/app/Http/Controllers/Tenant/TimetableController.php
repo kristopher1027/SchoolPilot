@@ -21,6 +21,12 @@ class TimetableController extends Controller
             ->orderByRaw("CASE day_of_week WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6 ELSE 7 END")
             ->orderBy('start_time');
 
+        $user = Auth::guard('school')->user();
+        if (in_array($user->role, ['class_teacher', 'subject_teacher'], true)) {
+            $staffId = Staff::where('user_id', $user->id)->value('id');
+            $query->where('staff_id', $staffId ?? 0);
+        }
+
         foreach (['class_id', 'academic_session_id', 'term_id', 'day_of_week'] as $filter) {
             if ($request->filled($filter)) {
                 $query->where($filter, $request->input($filter));
