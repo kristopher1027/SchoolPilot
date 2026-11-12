@@ -1,10 +1,21 @@
 @extends('tenant.layouts.app')
 @section('content')
 <div class="mb-6"><a href="{{ url('/school/' . request()->route('school') . '/announcements') }}" class="text-sm text-blue-700">← Noticeboard</a></div>
-<article class="mx-auto max-w-3xl rounded-lg bg-white p-6 shadow md:p-8">@if($announcement->status === 'draft')<span class="rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">Draft</span>@endif
+<article class="mx-auto max-w-3xl rounded-lg bg-white p-6 shadow md:p-8">
+@if(session('success'))<div class="mb-4 rounded bg-green-50 p-3 text-green-800" role="status">{{ session('success') }}</div>@endif
+@if($announcement->status === 'draft')<span class="rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">Draft</span>@endif
 <div class="mt-2 flex flex-wrap items-center gap-2"><span class="rounded bg-blue-50 px-2 py-1 text-xs capitalize text-blue-800">{{ $announcement->audience === 'all' ? 'Everyone' : $announcement->audience }}</span></div>
 <h3 class="mt-3 text-2xl font-bold text-gray-800">{{ $announcement->title }}</h3><p class="mt-2 text-xs text-gray-500">By {{ $announcement->author?->name }} · {{ $announcement->published_at?->format('d M Y, h:i A') ?? 'Draft' }}</p>
 <div class="mt-6 whitespace-pre-line text-sm leading-7 text-gray-700">{{ $announcement->body }}</div>
 @if($announcement->expires_at)<p class="mt-6 border-t pt-4 text-xs text-gray-500">This announcement expires {{ $announcement->expires_at->format('d M Y, h:i A') }}.</p>@endif
+
+@if(in_array(Auth::guard('school')->user()->role, ['school_admin', 'principal'], true))
+<div class="mt-6 flex flex-wrap gap-3 border-t pt-5">
+@if($announcement->status === 'draft')
+<form method="POST" action="{{ url('/school/' . request()->route('school') . '/announcements/' . $announcement->id . '/publish') }}">@csrf<button class="rounded bg-blue-700 px-4 py-2 text-sm text-white">Publish now</button></form>
+@endif
+<form method="POST" action="{{ url('/school/' . request()->route('school') . '/announcements/' . $announcement->id) }}" onsubmit="return confirm('Delete this announcement?')">@csrf @method('DELETE')<button class="rounded border border-red-200 px-4 py-2 text-sm text-red-700">Delete</button></form>
+</div>
+@endif
 </article>
 @endsection
