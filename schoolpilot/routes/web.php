@@ -9,6 +9,7 @@ use App\Http\Controllers\Tenant\ResultController;
 use App\Http\Controllers\Tenant\TeacherController;
 use App\Http\Controllers\Tenant\AssignmentController;
 use App\Http\Controllers\Tenant\AttendanceController;
+use App\Http\Controllers\Tenant\TimetableController;
 use App\Http\Controllers\Tenant\FeeController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
@@ -229,6 +230,14 @@ Route::prefix('school/{school}')->group(function () {
                 Route::get('/fees/invoices/{invoice}', [FeeController::class, 'showInvoice'])->whereNumber('invoice');
                 Route::post('/fees/invoices/{invoice}/payments', [FeeController::class, 'storePayment'])->whereNumber('invoice');
                 Route::get('/fees/receipts/{payment}', [FeeController::class, 'receipt'])->whereNumber('payment');
+            });
+
+            Route::get('/timetable', [TimetableController::class, 'index'])
+                ->middleware(RoleMiddleware::class . ':school_admin,principal,vice_principal,dean,hod,class_teacher,subject_teacher');
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
+                Route::get('/timetable/create', [TimetableController::class, 'create']);
+                Route::post('/timetable', [TimetableController::class, 'store']);
+                Route::delete('/timetable/{entry}', [TimetableController::class, 'destroy'])->whereNumber('entry');
             });
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,dean,hod,class_teacher')->group(function () {
