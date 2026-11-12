@@ -17,8 +17,9 @@ class AdmissionController extends Controller
     public function apply()
     {
         $sections = Section::query()->orderBy('name')->get();
+        $classes = SchoolClass::query()->orderBy('name')->get();
 
-        return view('tenant.admissions.apply', compact('sections'));
+        return view('tenant.admissions.apply', compact('sections', 'classes'));
     }
 
     public function submitApplication(Request $request)
