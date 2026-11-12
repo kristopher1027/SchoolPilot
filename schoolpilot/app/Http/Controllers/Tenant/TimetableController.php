@@ -35,11 +35,12 @@ class TimetableController extends Controller
         }
 
         $entries = $query->paginate(30)->withQueryString();
+        $canManage = in_array($user->role, ['school_admin', 'principal'], true);
         $classes = SchoolClass::with('section')->orderBy('name')->get();
         $sessions = AcademicSession::orderByDesc('start_date')->get();
         $terms = Term::with('academicSession')->orderBy('start_date')->get();
 
-        return view('tenant.timetable.index', compact('entries', 'classes', 'sessions', 'terms'));
+        return view('tenant.timetable.index', compact('entries', 'classes', 'sessions', 'terms', 'canManage'));
     }
 
     public function create()
