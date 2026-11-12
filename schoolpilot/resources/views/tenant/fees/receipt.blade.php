@@ -1,0 +1,12 @@
+@extends('tenant.layouts.app')
+@section('content')
+<div class="mx-auto max-w-2xl">
+<div class="mb-5 flex items-center justify-between"><a class="text-sm text-blue-700" href="{{ url('/school/' . request()->route('school') . '/fees/invoices/' . $payment->invoice_id) }}">← Back to invoice</a><button onclick="window.print()" class="rounded border px-4 py-2 text-sm print:hidden">Print receipt</button></div>
+<div class="rounded-lg border bg-white p-8 shadow-sm print:border-0 print:shadow-none">
+<div class="border-b pb-5 text-center"><h3 class="text-2xl font-bold">SchoolPilot</h3><p class="mt-1 text-sm text-gray-500">Official payment receipt</p></div>
+<div class="my-6 flex justify-between gap-4"><div><p class="text-xs uppercase text-gray-500">Receipt number</p><p class="font-semibold">{{ $payment->receipt_no }}</p></div><div class="text-right"><p class="text-xs uppercase text-gray-500">Payment date</p><p class="font-semibold">{{ $payment->paid_at?->format('d M Y, h:i A') }}</p></div></div>
+<div class="space-y-3 border-y py-5 text-sm"><div class="flex justify-between gap-3"><span class="text-gray-500">Student</span><strong>{{ $payment->invoice?->student?->last_name }}, {{ $payment->invoice?->student?->first_name }}</strong></div><div class="flex justify-between gap-3"><span class="text-gray-500">Admission number</span><strong>{{ $payment->invoice?->student?->admission_no }}</strong></div><div class="flex justify-between gap-3"><span class="text-gray-500">Academic period</span><strong>{{ $payment->invoice?->academicSession?->name }} · {{ $payment->invoice?->term?->name }}</strong></div><div class="flex justify-between gap-3"><span class="text-gray-500">Payment method</span><strong class="capitalize">{{ $payment->method }}</strong></div><div class="flex justify-between gap-3"><span class="text-gray-500">Reference</span><strong>{{ $payment->reference ?: '—' }}</strong></div></div>
+<div class="my-6 flex justify-between"><span class="text-gray-600">Amount received</span><strong class="text-2xl">₦{{ number_format($payment->amount, 2) }}</strong></div>
+<p class="border-t pt-5 text-center text-sm text-gray-500">Thank you. Please keep this receipt for your records.</p>
+</div></div>
+@endsection

@@ -9,6 +9,7 @@ use App\Http\Controllers\Tenant\ResultController;
 use App\Http\Controllers\Tenant\TeacherController;
 use App\Http\Controllers\Tenant\AssignmentController;
 use App\Http\Controllers\Tenant\AttendanceController;
+use App\Http\Controllers\Tenant\FeeController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Tenant\AcademicSession;
@@ -217,6 +218,17 @@ Route::prefix('school/{school}')->group(function () {
 
                 Route::get('/assignments', [AssignmentController::class, 'index']);
                 Route::post('/assignments', [AssignmentController::class, 'store']);
+            });
+
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar')->group(function () {
+                Route::get('/fees', [FeeController::class, 'index']);
+                Route::get('/fees/items/create', [FeeController::class, 'createFeeItem']);
+                Route::post('/fees/items', [FeeController::class, 'storeFeeItem']);
+                Route::get('/fees/invoices/create', [FeeController::class, 'createInvoice']);
+                Route::post('/fees/invoices', [FeeController::class, 'storeInvoice']);
+                Route::get('/fees/invoices/{invoice}', [FeeController::class, 'showInvoice'])->whereNumber('invoice');
+                Route::post('/fees/invoices/{invoice}/payments', [FeeController::class, 'storePayment'])->whereNumber('invoice');
+                Route::get('/fees/receipts/{payment}', [FeeController::class, 'receipt'])->whereNumber('payment');
             });
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,dean,hod,class_teacher')->group(function () {
