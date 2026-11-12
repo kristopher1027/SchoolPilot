@@ -67,9 +67,10 @@ class StudentController extends Controller
 
     public function show(Request $request, Student $student)
     {
-        $student->load(['section', 'schoolClass']);
+        $student->load(['section', 'schoolClass', 'guardians.user']);
+        $availableGuardians = \\App\\Models\\Tenant\\Guardian::query()->with('user')->orderBy('id')->get();
 
-        return view('tenant.students.show', compact('student'));
+        return view('tenant.students.show', compact('student', 'availableGuardians'));
     }
 
     public function edit(Student $student)
