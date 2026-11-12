@@ -23,6 +23,10 @@
                     <a href="/school/greenfield/students" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Students</a>
                 @endif
 
+                @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'dean']))
+                    <a href="/school/{{ request()->route('school') }}/parents" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Parents & Guardians</a>
+                @endif
+
                 {{-- Only Admin and Principal can see Staff --}}
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal']))
                     <a href="/school/greenfield/staff" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Staff</a>
