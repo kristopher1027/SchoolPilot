@@ -1,0 +1,13 @@
+@extends('tenant.layouts.app')
+@section('content')
+<div class="mb-6"><a href="{{ url('/school/' . request()->route('school') . '/announcements') }}" class="text-sm text-blue-700">← Noticeboard</a><h3 class="mt-2 text-2xl font-bold">Create Announcement</h3><p class="text-sm text-gray-500">Share a notice with the relevant school community.</p></div>
+@if($errors->any())<div class="mb-5 rounded bg-red-50 p-4 text-red-700"><ul class="list-disc pl-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+<form method="POST" action="{{ url('/school/' . request()->route('school') . '/announcements') }}" class="max-w-3xl space-y-5 rounded-lg bg-white p-6 shadow">@csrf
+<div><label class="mb-1 block text-sm font-medium">Announcement title</label><input name="title" required maxlength="180" value="{{ old('title') }}" class="w-full rounded border-gray-300" placeholder="e.g. Resumption date for the new term"></div>
+<div><label class="mb-1 block text-sm font-medium">Message</label><textarea name="body" required rows="9" maxlength="30000" class="w-full rounded border-gray-300" placeholder="Write the announcement details...">{{ old('body') }}</textarea></div>
+<div><label class="mb-1 block text-sm font-medium">Audience</label><select name="audience" required class="w-full rounded border-gray-300"><option value="all" @selected(old('audience','all') === 'all')>Everyone</option><option value="staff" @selected(old('audience') === 'staff')>All staff</option><option value="teachers" @selected(old('audience') === 'teachers')>Teachers</option><option value="parents" @selected(old('audience') === 'parents')>Parents / Guardians</option><option value="students" @selected(old('audience') === 'students')>Students</option></select></div>
+<div><label class="mb-1 block text-sm font-medium">Expiry date (optional)</label><input type="datetime-local" name="expires_at" min="{{ now()->format('Y-m-d\TH:i') }}" value="{{ old('expires_at') }}" class="w-full rounded border-gray-300"><p class="mt-1 text-xs text-gray-500">The notice will stop appearing after this date and time.</p></div>
+<label class="flex items-center gap-2 text-sm"><input type="checkbox" name="publish_now" value="1" @checked(old('publish_now', '1'))> Publish immediately</label>
+<div class="flex gap-3"><button class="rounded bg-blue-700 px-5 py-2 text-white">Save Announcement</button><a href="{{ url('/school/' . request()->route('school') . '/announcements') }}" class="rounded border px-5 py-2">Cancel</a></div>
+</form>
+@endsection
