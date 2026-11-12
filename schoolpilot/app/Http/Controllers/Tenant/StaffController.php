@@ -1,15 +1,15 @@
 <?php
 
-namespace App\\Http\\Controllers\\Tenant;
+namespace App\Http\Controllers\Tenant;
 
-use App\\Http\\Controllers\\Controller;
-use App\\Models\\Tenant\\Department;
-use App\\Models\\Tenant\\Staff;
-use App\\Models\\Tenant\\User;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Facades\\Hash;
-use Illuminate\\Validation\\Rule;
+use App\Http\Controllers\Controller;
+use App\Models\Tenant\Department;
+use App\Models\Tenant\Staff;
+use App\Models\Tenant\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 
 class StaffController extends Controller
 {
