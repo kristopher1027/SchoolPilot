@@ -38,6 +38,10 @@
                     <a href="/school/{{ request()->route('school') }}/fees" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Fees & Payments</a>
                 @endif
 
+                @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'vice_principal', 'dean', 'hod', 'class_teacher', 'subject_teacher']))
+                    <a href="/school/{{ request()->route('school') }}/timetable" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Timetable</a>
+                @endif
+
                 {{-- Attendance for school leadership and class teachers --}}
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'dean', 'hod', 'class_teacher']))
                     <a href="/school/{{ request()->route('school') }}/attendance" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Attendance</a>
