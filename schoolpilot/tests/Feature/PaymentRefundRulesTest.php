@@ -24,6 +24,13 @@ class PaymentRefundRulesTest extends TestCase
         $this->assertFalse($this->invoke('canReviewRefund', 10, 10));
     }
 
+    public function test_refund_settlement_requires_a_third_person(): void
+    {
+        $this->assertTrue($this->invoke('canSettleRefund', 10, 11, 12));
+        $this->assertFalse($this->invoke('canSettleRefund', 10, 11, 10));
+        $this->assertFalse($this->invoke('canSettleRefund', 10, 11, 11));
+    }
+
     private function invoke(string $methodName, ...$arguments)
     {
         $controller = new FeeController();
