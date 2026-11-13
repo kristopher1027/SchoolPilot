@@ -36,6 +36,9 @@ class PayrollController extends Controller
             'calculation' => ['required', Rule::in(['fixed', 'percentage'])],
             'default_value' => ['required', 'numeric', 'min:0', 'max:999999999999'],
         ]);
+        if ($data['calculation'] === 'percentage' && $data['default_value'] > 100) {
+            return back()->withErrors(['default_value' => 'Percentage components cannot exceed 100%.'])->withInput();
+        }
         $id = DB::table('salary_components')->insertGetId($data + [
             'is_active' => true, 'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -51,11 +54,15 @@ class PayrollController extends Controller
             'base_salary' => ['required', 'numeric', 'gt:0', 'max:999999999999'],
             'currency' => ['required', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
             'effective_from' => ['required', 'date'],
-            'components' => ['sometimes', 'array'],
-            'components.*.id' => ['required', 'integer', 'distinct', 'exists:salary_components,id'],
-            'components.*.amount_override' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
+            'component_ids' => ['sometimes', 'array'],
+            'component_ids.*' => ['required', 'integer', 'distinct', 'exists:salary_components,id'],
+            'component_overrides' => ['sometimes', 'array'],
+            'component_overrides.*' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
         ]);
         $start = Carbon::parse($data['effective_from'])->toDateString();
+        if (strtolower($data['currency']) !== $data['currency']) {
+            return back()->withErrors(['currency' => 'Currency must use three uppercase ISO currency letters.'])->withInput();
+        }
         $future = DB::table('staff_salary_assignments')->where('staff_id', $data['staff_id'])
             ->where('is_active', true)->whereDate('effective_from', '>=', $start)->exists();
         if ($future) {
@@ -65,8 +72,10 @@ class PayrollController extends Controller
         $actor = Auth::guard('school')->user();
         $id = DB::transaction(function () use ($data, $start, $actor, $request) {
             DB::table('staff_salary_assignments')->where('staff_id', $data['staff_id'])
-                ->where('is_active', true)->whereNull('effective_to')
-                ->whereDate('effective_from', '<', $start)
+                ->where('is_active', true)->whereDate('effective_from', '<', $start)
+                ->where(function ($q) use ($start) {
+                    $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $start);
+                })
                 ->update(['effective_to' => Carbon::parse($start)->subDay()->toDateString(), 'updated_at' => now()]);
 
             $id = DB::table('staff_salary_assignments')->insertGetId([
@@ -81,13 +90,13 @@ class PayrollController extends Controller
                 'updated_at' => now(),
             ]);
 
-            foreach ($data['components'] ?? [] as $component) {
-                $definition = DB::table('salary_components')->where('id', $component['id'])->where('is_active', true)->first();
+            foreach ($data['component_ids'] ?? [] as $componentId) {
+                $definition = DB::table('salary_components')->where('id', $componentId)->where('is_active', true)->first();
                 abort_unless($definition, 422, 'A selected salary component is inactive.');
                 DB::table('salary_assignment_components')->insert([
                     'salary_assignment_id' => $id,
-                    'salary_component_id' => $component['id'],
-                    'amount_override' => $component['amount_override'] ?? null,
+                    'salary_component_id' => $componentId,
+                    'amount_override' => $data['component_overrides'][$componentId] ?? null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -110,6 +119,13 @@ class PayrollController extends Controller
             'month' => ['required', 'integer', 'between:1,12'],
             'currency' => ['required', 'string', 'size:3', 'regex:/^[A-Z]{3}$/'],
         ]);
+        if (strtoupper($data['currency']) !== $data['currency']) {
+            return back()->withErrors(['currency' => 'Currency must use three uppercase ISO currency letters.'])->withInput();
+        }
+        $exists = DB::table('payroll_periods')->where('year', $data['year'])->where('month', $data['month'])->where('currency', $data['currency'])->exists();
+        if ($exists) {
+            return back()->withErrors(['month' => 'A payroll period already exists for this month and currency.'])->withInput();
+        }
         $id = DB::table('payroll_periods')->insertGetId([
             'year' => $data['year'], 'month' => $data['month'], 'currency' => $data['currency'],
             'status' => 'draft', 'staff_count' => 0, 'gross_total' => 0, 'deductions_total' => 0, 'net_total' => 0,
