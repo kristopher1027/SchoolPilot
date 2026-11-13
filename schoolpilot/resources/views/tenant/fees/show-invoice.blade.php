@@ -52,7 +52,7 @@
 @endif
 
 <div class="overflow-hidden rounded-lg bg-white shadow">
-    <div class="border-b p-5"><h4 class="font-semibold">Payment history and refund controls</h4><p class="text-sm text-gray-500">Refund requests require independent approval by a school administrator or principal.</p></div>
+    <div class="border-b p-5"><h4 class="font-semibold">Payment history and refund controls</h4><p class="text-sm text-gray-500">Refund approval updates the school ledger. Any cash or bank transfer refund must be executed separately and its reference recorded.</p></div>
     <div class="divide-y">
         @forelse($invoice->payments as $payment)
             @php
