@@ -134,6 +134,28 @@ class FeeController extends Controller
         return preg_match('/^[=+@\\-\\t\\r]/', $value) ? "'" . $value : $value;
     }
 
+    public function overdueInvoices()
+    {
+        $overdueQuery = Invoice::with([
+            'student.guardians' => fn ($query) => $query->wherePivot('is_primary', true),
+            'academicSession',
+            'term',
+        ])
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '<', today())
+            ->where('balance', '>', 0)
+            ->where('status', '!=', 'paid')
+            ->orderBy('due_date');
+
+        $summary = [
+            'count' => (clone $overdueQuery)->count(),
+            'balance' => round((float) (clone $overdueQuery)->sum('balance'), 2),
+        ];
+        $invoices = $overdueQuery->paginate(25)->withQueryString();
+
+        return view('tenant.fees.overdue', compact('invoices', 'summary'));
+    }
+
     public function createFeeItem()
     {
         $sessions = AcademicSession::orderByDesc('start_date')->get();
