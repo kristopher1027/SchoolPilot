@@ -26,6 +26,26 @@ class PayrollCalculationTest extends TestCase
         $this->assertSame(333.34, $method->invoke($controller, 10000.0, 'percentage', 3.3334));
     }
 
+    public function test_payroll_creator_cannot_approve_their_own_period(): void
+    {
+        $controller = new PayrollController();
+        $method = new \\ReflectionMethod($controller, 'canApprovePayroll');
+        $method->setAccessible(true);
+        $payroll = (object) ['created_by' => 17];
+
+        $this->assertFalse($method->invoke($controller, $payroll, 17));
+        $this->assertTrue($method->invoke($controller, $payroll, 23));
+    }
+
+    public function test_legacy_payroll_without_creator_can_be_approved_by_an_authorized_manager(): void
+    {
+        $controller = new PayrollController();
+        $method = new \\ReflectionMethod($controller, 'canApprovePayroll');
+        $method->setAccessible(true);
+
+        $this->assertTrue($method->invoke($controller, (object) ['created_by' => null], 23));
+    }
+
     public function test_payroll_approval_requires_item_count_and_all_totals_to_match(): void
     {
         $controller = new PayrollController();
