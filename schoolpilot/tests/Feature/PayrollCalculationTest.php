@@ -47,6 +47,26 @@ class PayrollCalculationTest extends TestCase
         $this->assertTrue($method->invoke($controller, (object) ['created_by' => null], 23));
     }
 
+    public function test_payroll_approver_cannot_mark_the_same_period_as_paid(): void
+    {
+        $controller = new PayrollController();
+        $method = new ReflectionMethod($controller, 'canMarkPayrollPaid');
+        $method->setAccessible(true);
+        $payroll = (object) ['approved_by' => 17];
+
+        $this->assertFalse($method->invoke($controller, $payroll, 17));
+        $this->assertTrue($method->invoke($controller, $payroll, 23));
+    }
+
+    public function test_legacy_payroll_without_approver_can_be_marked_paid_by_an_authorized_manager(): void
+    {
+        $controller = new PayrollController();
+        $method = new ReflectionMethod($controller, 'canMarkPayrollPaid');
+        $method->setAccessible(true);
+
+        $this->assertTrue($method->invoke($controller, (object) ['approved_by' => null], 23));
+    }
+
     public function test_payroll_approval_requires_item_count_and_all_totals_to_match(): void
     {
         $controller = new PayrollController();
