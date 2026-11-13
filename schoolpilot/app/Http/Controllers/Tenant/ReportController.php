@@ -28,6 +28,12 @@ class ReportController extends Controller
     {
         $filters = $this->validatedFilters($request);
         $data = $this->visibleReportData($this->buildReportData($filters));
+        DB::table('audit_logs')->insert([
+            'user_id' => Auth::guard('school')->id(), 'action' => 'report.exported',
+            'entity_type' => 'school_report', 'entity_id' => null,
+            'old_value' => null, 'new_value' => json_encode($filters),
+            'ip_address' => $request->ip(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
         $rows = $this->exportRows($data);
         $filename = 'schoolpilot-report-' . now()->format('Ymd-His') . '.csv';
 
@@ -35,7 +41,7 @@ class ReportController extends Controller
             $output = fopen('php://output', 'w');
             fputcsv($output, ['Report area', 'Metric', 'Value']);
             foreach ($rows as $row) {
-                fputcsv($output, $row);
+                fputcsv($output, array_map(fn ($value) => $this->safeCsvValue($value), $row));
             }
             fclose($output);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
@@ -208,10 +214,20 @@ class ReportController extends Controller
                 'enrollment' => $data['enrollment'],
                 'attendance' => $data['attendance'],
                 'academics' => $data['academics'],
+                ...($role === 'dean' ? ['admissions' => $data['admissions']] : []),
             ];
         }
 
         return $data;
+    }
+
+    private function safeCsvValue(mixed $value): mixed
+    {
+        if (!is_string($value) || $value === '') {
+            return $value;
+        }
+
+        return preg_match('/^[=+@\\-\\t\\r]/', $value) ? "'" . $value : $value;
     }
 
     private function exportRows(array $data): array
