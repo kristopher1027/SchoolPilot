@@ -39,6 +39,7 @@ class LibraryController extends Controller
             ->when($request->filled('category_id'), fn ($query) => $query->where('category_id', $request->category_id))
             ->when($request->status === 'available', fn ($query) => $query->whereHas('copies', fn ($copies) => $copies->where('status', 'available')))
             ->when($request->status === 'issued', fn ($query) => $query->whereHas('copies', fn ($copies) => $copies->where('status', 'issued')))
+            ->when($request->status === 'overdue', fn ($query) => $query->whereHas('copies', fn ($copies) => $copies->whereHas('activeLoan', fn ($loan) => $loan->whereNull('returned_at')->whereDate('due_at', '<', today()))))
             ->orderBy('title')->paginate(15)->withQueryString();
 
         $categories = LibraryCategory::orderBy('name')->get();
