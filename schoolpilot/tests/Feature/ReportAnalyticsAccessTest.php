@@ -58,7 +58,7 @@ class ReportAnalyticsAccessTest extends TestCase
     public function test_csv_export_escapes_spreadsheet_formula_prefixes(): void
     {
         $controller = new ReportController();
-        $method = new \\ReflectionMethod($controller, 'safeCsvValue');
+        $method = new \ReflectionMethod($controller, 'safeCsvValue');
         $method->setAccessible(true);
 
         $this->assertSame("'=SUM(A1:A2)", $method->invoke($controller, '=SUM(A1:A2)'));
