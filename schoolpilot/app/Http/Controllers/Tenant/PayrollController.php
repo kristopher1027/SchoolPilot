@@ -247,6 +247,11 @@ class PayrollController extends Controller
             $payroll = DB::table('payroll_periods')->where('id', $period)->lockForUpdate()->first();
             abort_unless($payroll, 404);
             abort_unless($payroll->status === 'draft' && $payroll->staff_count > 0, 422, 'Generate a non-empty draft before approval.');
+            abort_unless(
+                $this->canApprovePayroll($payroll, (int) $actor->id),
+                403,
+                'The person who created this payroll cannot approve it. Another authorized manager must review it.'
+            );
 
             $totals = DB::table('payroll_items')
                 ->where('payroll_period_id', $period)
@@ -318,6 +323,11 @@ class PayrollController extends Controller
     private function componentAmount(float $base, string $calculation, float $value): float
     {
         return round($calculation === 'percentage' ? $base * $value / 100 : $value, 2);
+    }
+
+    private function canApprovePayroll(object $payroll, int $actorId): bool
+    {
+        return $payroll->created_by === null || (int) $payroll->created_by !== $actorId;
     }
 
     private function payrollTotalsMatch(object $payroll, object $totals): bool
