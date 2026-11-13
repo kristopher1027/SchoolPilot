@@ -96,6 +96,42 @@
                     </div>
                 </div>
 
+                @php($classTimetable = $student->class_id ? $timetable->get($student->class_id, collect()) : collect())
+                <div class="border-b p-5">
+                    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h5 class="font-semibold text-gray-800">Class timetable</h5>
+                        <span class="text-xs text-gray-500">Current academic session and term · Read-only</span>
+                    </div>
+                    @if($classTimetable->isEmpty())
+                        <p class="text-sm text-gray-500">No current timetable has been published for this class.</p>
+                    @else
+                        <div class="overflow-x-auto rounded border">
+                            <table class="min-w-full divide-y">
+                                <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                                    <tr>
+                                        <th class="px-3 py-2">Day</th>
+                                        <th class="px-3 py-2">Time</th>
+                                        <th class="px-3 py-2">Subject</th>
+                                        <th class="px-3 py-2">Teacher</th>
+                                        <th class="px-3 py-2">Room</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y bg-white">
+                                    @foreach($classTimetable as $lesson)
+                                        <tr>
+                                            <td class="whitespace-nowrap px-3 py-2 text-sm font-medium">{{ $lesson->day_of_week }}</td>
+                                            <td class="whitespace-nowrap px-3 py-2 text-sm">{{ \Illuminate\Support\Carbon::parse($lesson->start_time)->format('g:i A') }} – {{ \Illuminate\Support\Carbon::parse($lesson->end_time)->format('g:i A') }}</td>
+                                            <td class="px-3 py-2 text-sm">{{ $lesson->subject_name }}</td>
+                                            <td class="px-3 py-2 text-sm">{{ $lesson->teacher_name ?: 'Not assigned' }}</td>
+                                            <td class="px-3 py-2 text-sm">{{ $lesson->room ?: '—' }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+
                 @php
                     $studentInvoices = $invoices->get($student->id, collect());
                     $studentInvoiceIds = $studentInvoices->pluck('id');

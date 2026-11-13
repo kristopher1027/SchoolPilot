@@ -58,6 +58,31 @@ class ParentPortalController extends Controller
             ->groupBy('student_id')
             ->map(fn ($records) => $records->take(5));
 
+        $classIds = $guardian->students->pluck('class_id')->filter()->unique()->values();
+        $timetable = DB::table('timetable_entries')
+            ->join('subjects', 'subjects.id', '=', 'timetable_entries.subject_id')
+            ->join('staff', 'staff.id', '=', 'timetable_entries.staff_id')
+            ->leftJoin('users as teachers', 'teachers.id', '=', 'staff.user_id')
+            ->join('academic_sessions', 'academic_sessions.id', '=', 'timetable_entries.academic_session_id')
+            ->join('terms', 'terms.id', '=', 'timetable_entries.term_id')
+            ->whereIn('timetable_entries.class_id', $classIds)
+            ->where('academic_sessions.is_current', true)
+            ->where('terms.is_current', true)
+            ->orderByRaw("CASE timetable_entries.day_of_week WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6 ELSE 7 END")
+            ->orderBy('timetable_entries.start_time')
+            ->get([
+                'timetable_entries.class_id',
+                'timetable_entries.day_of_week',
+                'timetable_entries.start_time',
+                'timetable_entries.end_time',
+                'timetable_entries.room',
+                'subjects.name as subject_name',
+                'teachers.name as teacher_name',
+                'academic_sessions.name as session_name',
+                'terms.name as term_name',
+            ])
+            ->groupBy('class_id');
+
         $invoices = DB::table('invoices as invoices')
             ->join('academic_sessions', 'academic_sessions.id', '=', 'invoices.academic_session_id')
             ->join('terms', 'terms.id', '=', 'invoices.term_id')
@@ -135,6 +160,7 @@ class ParentPortalController extends Controller
         return view('tenant.parent-portal.dashboard', compact(
             'guardian',
             'attendance',
+            'timetable',
             'publishedResults',
             'invoices',
             'payments',
