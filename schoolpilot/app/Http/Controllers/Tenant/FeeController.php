@@ -177,7 +177,7 @@ class FeeController extends Controller
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999'],
             'method' => ['required', Rule::in(['cash', 'transfer'])],
-            'reference' => ['nullable', 'string', 'max:120', Rule::requiredIf(fn () => $request->input('method') === 'transfer')],
+            'reference' => ['nullable', 'string', 'max:120', Rule::requiredIf(fn () => $request->input('method') === 'transfer'), Rule::unique('payments', 'reference')],
         ]);
 
         $payment = DB::transaction(function () use ($data, $invoice) {
