@@ -4,6 +4,7 @@ use App\Http\Controllers\Tenant\StudentController;
 use App\Http\Controllers\Tenant\GuardianController;
 use App\Http\Controllers\Tenant\StaffController;
 use App\Http\Controllers\Tenant\StaffHrController;
+use App\Http\Controllers\Tenant\PayrollController;
 use App\Http\Controllers\Tenant\AcademicController;
 use App\Http\Controllers\Tenant\ScoreController;
 use App\Http\Controllers\Tenant\ResultController;
@@ -295,6 +296,23 @@ Route::prefix('school/{school}')->group(function () {
 
                 Route::get('/assignments', [AssignmentController::class, 'index']);
                 Route::post('/assignments', [AssignmentController::class, 'store']);
+            });
+
+
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar')->group(function () {
+                Route::get('/payroll', [PayrollController::class, 'index']);
+                Route::post('/payroll/components', [PayrollController::class, 'storeComponent']);
+                Route::post('/payroll/assignments', [PayrollController::class, 'storeAssignment']);
+                Route::post('/payroll/periods', [PayrollController::class, 'storePeriod']);
+                Route::get('/payroll/{period}', [PayrollController::class, 'show'])->whereNumber('period');
+                Route::post('/payroll/{period}/generate', [PayrollController::class, 'generate'])->whereNumber('period');
+                Route::post('/payroll/{period}/approve', [PayrollController::class, 'approve'])->whereNumber('period');
+                Route::post('/payroll/{period}/paid', [PayrollController::class, 'markPaid'])->whereNumber('period');
+            });
+
+            Route::middleware(RoleMiddleware::class . ':principal,vice_principal,dean,hod,class_teacher,subject_teacher,bursar,school_admin')->group(function () {
+                Route::get('/payroll/payslips', [PayrollController::class, 'payslips']);
+                Route::get('/payroll/payslips/{item}', [PayrollController::class, 'payslip'])->whereNumber('item');
             });
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar')->group(function () {
