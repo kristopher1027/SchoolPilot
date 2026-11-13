@@ -186,10 +186,7 @@ Route::prefix('school/{school}')->group(function () {
                 Route::post('/website/events', [SchoolWebsiteController::class, 'storeEvent']);
                 Route::post('/website/events/{event}/status', [SchoolWebsiteController::class, 'updateEvent'])->whereNumber('event');
                 Route::post('/website/clubs', [SchoolWebsiteController::class, 'storeClub']);
-                Route::post('/website/club-members', function (Request $request, string $school, SchoolWebsiteController $controller) {
-                    $data = $request->validate(['club_id' => ['required', 'integer', 'exists:school_clubs,id']]);
-                    return $controller->addClubMember($request, (int) $data['club_id']);
-                });
+                Route::post('/website/club-members', [SchoolWebsiteController::class, 'storeClubMember']);
                 Route::post('/website/clubs/{club}/members/{member}/end', [SchoolWebsiteController::class, 'endClubMember'])->whereNumber('club')->whereNumber('member');
                 Route::post('/website/registrations/{registration}', [SchoolWebsiteController::class, 'updateRegistration'])->whereNumber('registration');
             });
