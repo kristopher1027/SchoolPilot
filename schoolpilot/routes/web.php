@@ -14,6 +14,7 @@ use App\Http\Controllers\Tenant\AnnouncementController;
 use App\Http\Controllers\Tenant\FeeController;
 use App\Http\Controllers\Tenant\AdmissionController;
 use App\Http\Controllers\Tenant\LibraryController;
+use App\Http\Controllers\Tenant\InventoryController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Tenant\AcademicSession;
@@ -263,6 +264,23 @@ Route::prefix('school/{school}')->group(function () {
                 Route::post('/library/loans/{loan}/return', [LibraryController::class, 'returnCopy'])->whereNumber('loan');
                 Route::post('/library/loans/{loan}/renew', [LibraryController::class, 'renew'])->whereNumber('loan');
                 Route::post('/library/reservations', [LibraryController::class, 'reserve']);
+            });
+
+
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar')->group(function () {
+                Route::get('/inventory', [InventoryController::class, 'index']);
+                Route::post('/inventory/categories', [InventoryController::class, 'storeCategory']);
+                Route::post('/inventory/locations', [InventoryController::class, 'storeLocation']);
+                Route::post('/inventory/suppliers', [InventoryController::class, 'storeSupplier']);
+                Route::post('/inventory/items', [InventoryController::class, 'storeItem']);
+                Route::post('/inventory/movements', [InventoryController::class, 'adjustStock']);
+                Route::post('/inventory/purchase-requests', [InventoryController::class, 'requestPurchase']);
+                Route::post('/inventory/purchase-requests/{purchaseRequest}/decision', [InventoryController::class, 'decidePurchaseRequest'])->whereNumber('purchaseRequest');
+                Route::post('/inventory/purchase-orders', [InventoryController::class, 'createOrder']);
+                Route::post('/inventory/purchase-orders/{purchaseOrder}/receive', [InventoryController::class, 'receiveOrder'])->whereNumber('purchaseOrder');
+                Route::post('/inventory/assets', [InventoryController::class, 'storeAsset']);
+                Route::post('/inventory/assets/{asset}/status', [InventoryController::class, 'updateAssetStatus'])->whereNumber('asset');
+                Route::post('/inventory/assets/{asset}/maintenance', [InventoryController::class, 'storeMaintenance'])->whereNumber('asset');
             });
 
             Route::get('/timetable', [TimetableController::class, 'index'])
