@@ -32,7 +32,7 @@ class SchoolWebsiteSchemaTest extends TestCase
         $migration->up();
 
         foreach ([
-            'school_website_settings', 'school_website_pages', 'school_website_posts',
+            'school_website_settings', 'school_website_pages', 'school_website_posts', 'school_website_gallery_items',
             'school_events', 'school_event_registrations', 'school_clubs', 'school_club_members',
         ] as $table) {
             $this->assertTrue(Schema::connection('tenant_sqlite')->hasTable($table), "Missing table: {$table}");
