@@ -18,14 +18,15 @@ class ReportController extends Controller
         $sessions = DB::table('academic_sessions')->orderByDesc('start_date')->get();
         $terms = DB::table('terms')->when($filters['session_id'], fn ($q) => $q->where('academic_session_id', $filters['session_id']))->orderBy('start_date')->get();
         $classes = DB::table('classes')->orderBy('name')->get();
+        $role = Auth::guard('school')->user()->role;
 
-        return view('tenant.reports.index', compact('filters', 'data', 'sessions', 'terms', 'classes'));
+        return view('tenant.reports.index', compact('filters', 'data', 'sessions', 'terms', 'classes', 'role'));
     }
 
     public function export(Request $request): StreamedResponse
     {
         $filters = $this->validatedFilters($request);
-        $data = $this->buildReportData($filters);
+        $data = $this->visibleReportData($this->buildReportData($filters));
         $rows = $this->exportRows($data);
         $filename = 'schoolpilot-report-' . now()->format('Ymd-His') . '.csv';
 
