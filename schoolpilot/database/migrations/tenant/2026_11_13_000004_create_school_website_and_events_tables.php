@@ -78,7 +78,7 @@ return new class extends Migration
             $table->timestamp('registered_at');
             $table->timestamps();
             $table->index(['event_id', 'status']);
-            $table->unique(['event_id', 'email']);
+            $table->index(['event_id', 'email']);
         });
 
         Schema::create('school_clubs', function (Blueprint $table) {
