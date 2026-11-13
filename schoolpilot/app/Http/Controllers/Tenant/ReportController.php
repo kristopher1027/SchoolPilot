@@ -135,9 +135,22 @@ class ReportController extends Controller
                 ->when($filters['from'], fn ($q) => $q->whereDate('created_at', '>=', $filters['from']))
                 ->when($filters['to'], fn ($q) => $q->whereDate('created_at', '<=', $filters['to']));
             $data['finance']['invoiced'] = round((float) (clone $invoices)->sum('total_amount'), 2);
-            $data['finance']['collected'] = round((float) (clone $invoices)->sum('amount_paid'), 2);
             $data['finance']['outstanding'] = round((float) (clone $invoices)->sum('balance'), 2);
-            $data['finance']['payments'] = (clone $invoices)->where('status', 'paid')->count();
+            if (Schema::hasTable('payments')) {
+                $payments = DB::table('payments as p')->join('invoices as i', 'i.id', '=', 'p.invoice_id')
+                    ->when($filters['class_id'], function ($q) use ($filters) {
+                        $q->whereIn('i.student_id', DB::table('students')->select('id')->where('class_id', $filters['class_id']));
+                    })
+                    ->when($filters['session_id'], fn ($q) => $q->where('i.academic_session_id', $filters['session_id']))
+                    ->when($filters['term_id'], fn ($q) => $q->where('i.term_id', $filters['term_id']))
+                    ->when($filters['from'], fn ($q) => $q->whereDate('p.paid_at', '>=', $filters['from']))
+                    ->when($filters['to'], fn ($q) => $q->whereDate('p.paid_at', '<=', $filters['to']));
+                $data['finance']['collected'] = round((float) (clone $payments)->sum('p.amount'), 2);
+                $data['finance']['payments'] = (clone $payments)->count();
+            } else {
+                $data['finance']['collected'] = round((float) (clone $invoices)->sum('amount_paid'), 2);
+                $data['finance']['payments'] = 0;
+            }
         }
 
         if (Schema::hasTable('staff')) {
@@ -163,7 +176,7 @@ class ReportController extends Controller
             $data['inventory']['low_stock_items'] = $stock->filter(fn ($row) => (float) $row->quantity <= (float) $row->reorder_level)->count();
         }
         if (Schema::hasTable('assets')) $data['inventory']['assets'] = DB::table('assets')->whereNotIn('status', ['disposed', 'retired'])->count();
-        if (Schema::hasTable('asset_maintenances')) $data['inventory']['maintenance_records'] = DB::table('asset_maintenances')->count();
+        if (Schema::hasTable('asset_maintenance')) $data['inventory']['maintenance_records'] = DB::table('asset_maintenance')->count();
         if (Schema::hasTable('purchase_requests')) $data['inventory']['pending_purchase_requests'] = DB::table('purchase_requests')->where('status', 'pending')->count();
 
         if (Schema::hasTable('transport_vehicles')) $data['transport']['vehicles'] = DB::table('transport_vehicles')->where('status', 'active')->count();
