@@ -80,7 +80,7 @@ class SchoolWebsiteController extends Controller
         ]);
         $eventRow = DB::table('school_events')->where('id', $event)->where('status', 'published')->first();
         abort_unless($eventRow, 404);
-        if (!$eventRow->registration_open || $eventRow->starts_at < now()) {
+        if (!$eventRow->registration_open || \\Illuminate\\Support\\Carbon::parse($eventRow->starts_at)->isPast()) {
             throw ValidationException::withMessages(['event' => 'Registration for this event is closed.']);
         }
         if ($eventRow->capacity !== null) {
