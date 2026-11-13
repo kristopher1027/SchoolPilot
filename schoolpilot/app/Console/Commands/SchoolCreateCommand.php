@@ -69,7 +69,7 @@ class SchoolCreateCommand extends Command
         }
 
         $databaseName = $slug . '.sqlite';
-        $tenantsDirectory = database_path('tenants');
+        $tenantsDirectory = (string) Config::get('tenancy.database.sqlite.path', database_path('tenants'));
         $databasePath = $tenantsDirectory . DIRECTORY_SEPARATOR . $databaseName;
 
         if (is_file($databasePath)) {
