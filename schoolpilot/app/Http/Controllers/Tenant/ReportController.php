@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -44,11 +45,15 @@ class ReportController extends Controller
     {
         $data = $request->validate([
             'from' => ['nullable', 'date'],
-            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'to' => ['nullable', 'date'],
             'session_id' => ['nullable', 'integer', 'exists:academic_sessions,id'],
             'term_id' => ['nullable', 'integer', 'exists:terms,id'],
             'class_id' => ['nullable', 'integer', 'exists:classes,id'],
         ]);
+
+        if (!empty($data['from']) && !empty($data['to']) && strtotime($data['to']) < strtotime($data['from'])) {
+            throw ValidationException::withMessages(['to' => 'The end date must be on or after the start date.']);
+        }
 
         if (!empty($data['term_id'])) {
             $term = DB::table('terms')->where('id', $data['term_id'])->first();
@@ -72,7 +77,7 @@ class ReportController extends Controller
             'finance' => ['invoiced' => 0, 'collected' => 0, 'outstanding' => 0, 'payments' => 0],
             'staff' => ['total' => 0, 'active_users' => 0],
             'library' => ['books' => 0, 'copies' => 0, 'active_loans' => 0, 'overdue_loans' => 0, 'reservations' => 0],
-            'inventory' => ['items' => 0, 'low_stock_items' => 0, 'stock_value_units' => 0, 'assets' => 0, 'maintenance_records' => 0, 'pending_purchase_requests' => 0],
+            'inventory' => ['items' => 0, 'low_stock_items' => 0, 'total_stock_quantity' => 0, 'assets' => 0, 'maintenance_records' => 0, 'pending_purchase_requests' => 0],
             'transport' => ['vehicles' => 0, 'active_routes' => 0, 'active_assignments' => 0, 'incidents' => 0],
         ];
 
@@ -107,7 +112,8 @@ class ReportController extends Controller
                 $data['attendance'][$status] = (clone $attendance)->where('status', $status)->count();
             }
             $attended = $data['attendance']['present'] + $data['attendance']['late'];
-            $data['attendance']['rate'] = $data['attendance']['total'] > 0 ? round(($attended / $data['attendance']['total']) * 100, 1) : 0;
+            $eligible = $data['attendance']['total'] - $data['attendance']['excused'];
+            $data['attendance']['rate'] = $eligible > 0 ? round(($attended / $eligible) * 100, 1) : 0;
         }
 
         if (Schema::hasTable('score_entries')) {
@@ -174,7 +180,7 @@ class ReportController extends Controller
             $stock = DB::table('inventory_items as i')->leftJoin('inventory_stocks as s', 's.item_id', '=', 'i.id')
                 ->select('i.id', 'i.reorder_level')->selectRaw('COALESCE(SUM(s.quantity), 0) as quantity')
                 ->where('i.is_active', true)->groupBy('i.id', 'i.reorder_level')->get();
-            $data['inventory']['stock_value_units'] = round((float) $stock->sum('quantity'), 2);
+            $data['inventory']['total_stock_quantity'] = round((float) $stock->sum('quantity'), 2);
             $data['inventory']['low_stock_items'] = $stock->filter(fn ($row) => (float) $row->quantity <= (float) $row->reorder_level)->count();
         }
         if (Schema::hasTable('assets')) $data['inventory']['assets'] = DB::table('assets')->whereNotIn('status', ['disposed', 'retired'])->count();
