@@ -219,6 +219,12 @@ class SchoolWebsiteController extends Controller
         return $this->back($request, 'Club created.');
     }
 
+    public function storeClubMember(Request $request)
+    {
+        $data = $request->validate(['club_id' => ['required', 'integer', 'exists:school_clubs,id']]);
+        return $this->addClubMember($request, (int) $data['club_id']);
+    }
+
     public function addClubMember(Request $request, int $club)
     {
         $data = $request->validate(['student_id' => ['required', 'integer', 'exists:students,id'], 'joined_at' => ['required', 'date']]);
