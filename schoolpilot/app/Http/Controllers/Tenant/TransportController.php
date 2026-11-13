@@ -147,8 +147,10 @@ class TransportController extends Controller
             'fee_override' => ['nullable', 'numeric', 'min:0', 'max:9999999999'], 'notes' => ['nullable', 'string', 'max:2000'],
         ]);
         $routeStops = DB::table('transport_route_stops')->where('route_id', $data['route_id'])->pluck('stop_id')->all();
-        if (!in_array((int) $data['pickup_stop_id'], array_map('intval', $routeStops), true) || !in_array((int) $data['dropoff_stop_id'], array_map('intval', $routeStops), true)) {
-            throw ValidationException::withMessages(['pickup_stop_id' => 'Both selected stops must belong to the selected route.']);
+        $pickupOrder = DB::table('transport_route_stops')->where('route_id', $data['route_id'])->where('stop_id', $data['pickup_stop_id'])->value('stop_order');
+        $dropoffOrder = DB::table('transport_route_stops')->where('route_id', $data['route_id'])->where('stop_id', $data['dropoff_stop_id'])->value('stop_order');
+        if (!in_array((int) $data['pickup_stop_id'], array_map('intval', $routeStops), true) || !in_array((int) $data['dropoff_stop_id'], array_map('intval', $routeStops), true) || $pickupOrder === null || $dropoffOrder === null || $pickupOrder >= $dropoffOrder) {
+            throw ValidationException::withMessages(['pickup_stop_id' => 'Both stops must belong to the selected route, and the pickup stop must come before the drop-off stop.']);
         }
         if (DB::table('transport_student_assignments')->where('student_id', $data['student_id'])->where('status', 'active')->exists()) {
             throw ValidationException::withMessages(['student_id' => 'This student already has an active transport assignment. End the existing assignment first.']);
@@ -196,9 +198,15 @@ class TransportController extends Controller
         if (!$route || $route->status !== 'active' || !$vehicle || $vehicle->status !== 'active') {
             throw ValidationException::withMessages(['vehicle_id' => 'Trips require an active route and an active vehicle.']);
         }
+        if ($route->vehicle_id && (int) $route->vehicle_id !== (int) $vehicle->id) {
+            throw ValidationException::withMessages(['vehicle_id' => 'The selected vehicle does not match the vehicle assigned to this route.']);
+        }
         $capacity = (int) $vehicle->seat_capacity;
         $assigned = DB::table('transport_student_assignments')->where('route_id', $route->id)->where('status', 'active')->count();
         if ($assigned > $capacity) throw ValidationException::withMessages(['vehicle_id' => 'The active route assignments exceed this vehicle capacity.']);
+        if ($data['status'] === 'completed' && empty($data['arrived_at'])) {
+            throw ValidationException::withMessages(['arrived_at' => 'Enter an arrival time for a completed trip.']);
+        }
         $id = DB::table('transport_trips')->insertGetId($data + [
             'recorded_by' => Auth::guard('school')->id(), 'created_at' => now(), 'updated_at' => now(),
         ]);
@@ -241,6 +249,14 @@ class TransportController extends Controller
             'incident_type' => ['required', 'string', 'max:60'], 'description' => ['required', 'string', 'max:4000'],
             'action_taken' => ['nullable', 'string', 'max:4000'],
         ]);
+        if (!empty($data['trip_id'])) {
+            $trip = DB::table('transport_trips')->where('id', $data['trip_id'])->first();
+            if ($trip && (!empty($data['route_id']) && (int) $data['route_id'] !== (int) $trip->route_id || !empty($data['vehicle_id']) && (int) $data['vehicle_id'] !== (int) $trip->vehicle_id)) {
+                throw ValidationException::withMessages(['trip_id' => 'The incident route and vehicle must match the selected trip.']);
+            }
+            $data['route_id'] = $data['route_id'] ?? $trip->route_id;
+            $data['vehicle_id'] = $data['vehicle_id'] ?? $trip->vehicle_id;
+        }
         if (empty($data['trip_id']) && empty($data['route_id']) && empty($data['vehicle_id'])) {
             throw ValidationException::withMessages(['route_id' => 'Link the incident to a trip, route or vehicle.']);
         }
