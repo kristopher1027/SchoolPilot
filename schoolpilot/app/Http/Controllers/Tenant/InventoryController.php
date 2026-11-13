@@ -16,6 +16,7 @@ use App\Models\Tenant\PurchaseOrderItem;
 use App\Models\Tenant\PurchaseRequest;
 use App\Models\Tenant\PurchaseRequestItem;
 use App\Models\Tenant\StockLocation;
+use App\Models\Tenant\User;
 use App\Models\Tenant\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -36,6 +37,8 @@ class InventoryController extends Controller
         $orders = PurchaseOrder::with(['supplier', 'items.item'])->latest()->limit(20)->get();
         $assets = Asset::with(['category', 'location', 'maintenance'])->orderBy('name')->get();
         $maintenance = AssetMaintenance::with('asset')->latest()->limit(20)->get();
+        $movements = InventoryMovement::with(['item', 'location'])->latest('movement_at')->limit(30)->get();
+        $users = User::where('is_active', true)->orderBy('name')->get();
 
         $stockRows = InventoryStock::with('item')->get();
         $lowStock = $items->filter(fn ($item) => (float) $item->stocks->sum('quantity') <= (float) $item->reorder_level);
@@ -48,7 +51,7 @@ class InventoryController extends Controller
 
         return view('tenant.inventory.index', compact(
             'items', 'categories', 'locations', 'suppliers', 'requests', 'orders',
-            'assets', 'maintenance', 'lowStock', 'summary'
+            'assets', 'maintenance', 'movements', 'users', 'lowStock', 'summary'
         ));
     }
 
@@ -173,6 +176,7 @@ class InventoryController extends Controller
             'decision_note' => ['nullable', 'string', 'max:2000'],
         ]);
         abort_unless($purchaseRequest->status === 'pending', 422, 'This request has already been reviewed.');
+        abort_if((int) $purchaseRequest->requested_by === (int) Auth::guard('school')->id(), 403, 'The requester cannot approve or reject their own purchase request.');
         $purchaseRequest->update([
             'status' => $data['status'], 'approved_by' => Auth::guard('school')->id(),
             'approved_at' => now(), 'decision_note' => $data['decision_note'] ?? null,
