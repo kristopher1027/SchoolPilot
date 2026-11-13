@@ -8,6 +8,7 @@ use App\Models\Tenant\Student;
 use App\Models\Tenant\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -44,10 +45,11 @@ class GuardianController extends Controller
                 'name' => $data['name'],
                 'email' => strtolower($data['email']),
                 'phone' => $data['phone'] ?? null,
-                'password' => Str::random(64),
+                'password' => ! empty($data['portal_password'])
+                    ? Hash::make($data['portal_password'])
+                    : Str::random(64),
                 'role' => 'parent',
-                // Parent portal access is enabled in a later milestone.
-                'is_active' => false,
+                'is_active' => ! empty($data['portal_password']),
             ]);
 
             return Guardian::create([
@@ -98,6 +100,13 @@ class GuardianController extends Controller
                 'address' => $data['address'] ?? null,
                 'relationship' => $data['relationship'] ?? null,
             ]);
+
+            if (! empty($data['portal_password'])) {
+                $guardian->user->update([
+                    'password' => Hash::make($data['portal_password']),
+                    'is_active' => true,
+                ]);
+            }
         });
 
         return redirect('/school/' . $request->route('school') . '/parents')
@@ -147,6 +156,7 @@ class GuardianController extends Controller
             'occupation' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:5000'],
             'relationship' => ['nullable', 'string', 'max:100'],
+            'portal_password' => ['sometimes', 'nullable', 'string', 'min:12', 'max:255'],
         ]);
     }
 }

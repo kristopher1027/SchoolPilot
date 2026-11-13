@@ -18,5 +18,8 @@
     <label class="text-sm font-medium text-gray-700 sm:col-span-2">Address
         <textarea name="address" rows="3" maxlength="5000" class="mt-1 w-full rounded-md border-gray-300">{{ old('address', $guardian->address ?? '') }}</textarea>
     </label>
+    <label class="text-sm font-medium text-gray-700 sm:col-span-2">Set / reset parent portal password
+        <input type="password" name="portal_password" minlength="12" maxlength="255" autocomplete="new-password" class="mt-1 w-full rounded-md border-gray-300">
+        <span class="mt-1 block text-xs font-normal text-gray-500">Optional. Setting a password of at least 12 characters activates this parent account. Share the password securely with the parent.</span>
+    </label>
 </div>
-<p class="text-xs text-gray-500">A parent login is not activated by creating this contact record. Portal access will be handled separately.</p>

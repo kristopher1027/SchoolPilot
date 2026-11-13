@@ -19,6 +19,7 @@ use App\Http\Controllers\Tenant\LibraryController;
 use App\Http\Controllers\Tenant\InventoryController;
 use App\Http\Controllers\Tenant\TransportController;
 use App\Http\Controllers\Tenant\ReportController;
+use App\Http\Controllers\Tenant\ParentPortalController;
 use App\Http\Controllers\Tenant\SchoolWebsiteController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
@@ -172,6 +173,10 @@ Route::prefix('school/{school}')->group(function () {
         Route::middleware(['auth:school', EnsureActiveUser::class])->get('/', function () {
             $user = Auth::guard('school')->user();
 
+            if ($user->role === 'parent') {
+                return redirect('/school/' . request()->route('school') . '/parent-portal');
+            }
+
             if (in_array($user->role, ['class_teacher', 'subject_teacher'], true)) {
                 return redirect('/school/' . request()->route('school') . '/teacher-dashboard');
             }
@@ -203,6 +208,11 @@ Route::prefix('school/{school}')->group(function () {
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,vice_principal,dean,hod,bursar')->group(function () {
                 Route::get('/reports', [ReportController::class, 'index']);
                 Route::get('/reports/export', [ReportController::class, 'export']);
+            });
+
+            Route::middleware(RoleMiddleware::class . ':parent')->group(function () {
+                Route::get('/parent-portal', [ParentPortalController::class, 'dashboard']);
+                Route::get('/parent-portal/results/{studentId}', [ResultController::class, 'reportCard'])->whereNumber('studentId');
             });
 
             Route::get('/announcements', [AnnouncementController::class, 'index']);

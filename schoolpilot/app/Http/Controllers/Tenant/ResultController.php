@@ -157,12 +157,22 @@ class ResultController extends Controller
         $sessionId = $validated['session_id'];
         Term::whereKey($termId)->where('academic_session_id', $sessionId)->firstOrFail();
         $student = Student::findOrFail($studentId);
+
+        if (Auth::guard('school')->user()?->role === 'parent') {
+            $guardian = \App\Models\Tenant\Guardian::where('user_id', Auth::guard('school')->id())->firstOrFail();
+            abort_unless($guardian->students()->where('students.id', $student->id)->exists(), 403);
+        }
+
         $class = SchoolClass::findOrFail($student->class_id);
-        
+
         $approval = ResultApproval::where('student_id', $studentId)
             ->where('term_id', $termId)
             ->where('academic_session_id', $sessionId)
-            ->first();
+            ->firstOrFail();
+
+        if (Auth::guard('school')->user()?->role === 'parent') {
+            abort_unless($approval->status === 'published', 404);
+        }
 
         $subjects = Subject::where('section_id', $class->section_id)->get();
         $gradingBands = GradingBand::whereHas('gradingScale', function($q) use ($class) {
