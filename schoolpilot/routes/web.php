@@ -3,6 +3,7 @@
 use App\Http\Controllers\Tenant\StudentController;
 use App\Http\Controllers\Tenant\GuardianController;
 use App\Http\Controllers\Tenant\StaffController;
+use App\Http\Controllers\Tenant\StaffHrController;
 use App\Http\Controllers\Tenant\AcademicController;
 use App\Http\Controllers\Tenant\ScoreController;
 use App\Http\Controllers\Tenant\ResultController;
@@ -262,6 +263,19 @@ Route::prefix('school/{school}')->group(function () {
                 Route::get('/admissions/{application}', [AdmissionController::class, 'show'])->whereNumber('application');
                 Route::put('/admissions/{application}/review', [AdmissionController::class, 'review'])->whereNumber('application');
                 Route::post('/admissions/{application}/convert', [AdmissionController::class, 'convert'])->whereNumber('application');
+            });
+
+
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal,vice_principal,dean,hod,class_teacher,subject_teacher,bursar')->group(function () {
+                Route::get('/hr/leave', [StaffHrController::class, 'leaveIndex']);
+                Route::post('/hr/leave', [StaffHrController::class, 'applyLeave'])->middleware('throttle:10,1');
+            });
+
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
+                Route::get('/hr/staff-attendance', [StaffHrController::class, 'attendanceIndex']);
+                Route::post('/hr/staff-attendance', [StaffHrController::class, 'recordAttendance']);
+                Route::post('/hr/leave-types', [StaffHrController::class, 'storeLeaveType']);
+                Route::post('/hr/leave/{leave}/review', [StaffHrController::class, 'reviewLeave'])->whereNumber('leave');
             });
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
