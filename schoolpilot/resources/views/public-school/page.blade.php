@@ -1,0 +1,2 @@
+@extends('public-school.layout')
+@section('content')<article class="rounded-xl bg-white p-8 shadow-sm"><h1 class="mb-6 text-3xl font-bold">{{ $page->title }}</h1><div class="whitespace-pre-line leading-8 text-slate-700">{{ $page->content }}</div></article>@endsection

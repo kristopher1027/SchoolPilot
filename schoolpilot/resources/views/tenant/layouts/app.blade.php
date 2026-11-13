@@ -55,6 +55,10 @@
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'bursar']))
                     <a href="/school/{{ request()->route('school') }}/transport" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Transport Management</a>
                 @endif
+
+                @if(in_array(Auth::user()->role, ['school_admin', 'principal']))
+                    <a href="/school/{{ request()->route('school') }}/website/manage" class="block px-4 py-2 hover:bg-blue-800 rounded transition">School Website & Events</a>
+                @endif
                 @if(Auth::user()->role === 'parent')
                     <a href="/school/{{ request()->route('school') }}/transport/my-children" class="block px-4 py-2 hover:bg-blue-800 rounded transition">My Children's Transport</a>
                 @endif
