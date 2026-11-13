@@ -11,6 +11,44 @@
         <p class="mt-2 text-sm text-gray-500">Please contact the school office to link your parent account to a student profile.</p>
     </div>
 @else
+    <div class="mb-6 rounded-lg bg-white p-5 shadow">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+                <h4 class="text-lg font-semibold text-gray-800">School announcements</h4>
+                <p class="text-sm text-gray-500">Updates published for parents and the whole school.</p>
+            </div>
+            <span class="text-xs text-gray-500">{{ $announcements->count() }} recent</span>
+        </div>
+        @forelse($announcements as $announcement)
+            <article class="border-t py-4 first:border-0">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div class="min-w-0 flex-1">
+                        <div class="mb-1 flex flex-wrap items-center gap-2">
+                            <h5 class="font-semibold text-gray-800">{{ $announcement->title }}</h5>
+                            @if(isset($announcementReads[$announcement->id]))
+                                <span class="rounded-full bg-green-50 px-2 py-1 text-xs text-green-700">Read</span>
+                            @else
+                                <span class="rounded-full bg-blue-50 px-2 py-1 text-xs text-blue-700">New</span>
+                            @endif
+                        </div>
+                        <p class="text-xs text-gray-500">
+                            {{ $announcement->published_at?->format('d M Y, h:i A') }}
+                            @if($announcement->author) · {{ $announcement->author->name }} @endif
+                        </p>
+                        <div class="mt-2 whitespace-pre-line text-sm text-gray-700">{{ $announcement->body }}</div>
+                    </div>
+                    @if(! isset($announcementReads[$announcement->id]))
+                        <form method="POST" action="{{ url('/school/' . request()->route('school') . '/parent-portal/announcements/' . $announcement->id . '/read') }}">
+                            @csrf
+                            <button class="rounded border border-blue-200 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50">Mark as read</button>
+                        </form>
+                    @endif
+                </div>
+            </article>
+        @empty
+            <p class="text-sm text-gray-500">There are no current announcements for parents.</p>
+        @endforelse
+    </div>
     <div class="space-y-6">
         @foreach($guardian->students as $student)
             <section class="overflow-hidden rounded-lg bg-white shadow">

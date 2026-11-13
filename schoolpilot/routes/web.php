@@ -213,6 +213,7 @@ Route::prefix('school/{school}')->group(function () {
             Route::middleware(RoleMiddleware::class . ':parent')->group(function () {
                 Route::get('/parent-portal', [ParentPortalController::class, 'dashboard']);
                 Route::get('/parent-portal/results/{studentId}', [ResultController::class, 'reportCard'])->whereNumber('studentId');
+                Route::post('/parent-portal/announcements/{announcement}/read', [ParentPortalController::class, 'markAnnouncementRead'])->whereNumber('announcement');
             });
 
             Route::get('/announcements', [AnnouncementController::class, 'index']);
