@@ -153,7 +153,7 @@ class FeeController extends Controller
             ->where('i.status', '!=', 'paid');
 
         $aging = (clone $baseQuery)
-            ->selectRaw("{$bucket} as age_bucket, COUNT(i.id) as invoice_count, SUM(i.balance) as outstanding_total", [$today, $today, $today, $today])
+            ->selectRaw("{$bucket} as age_bucket, COUNT(i.id) as invoice_count, SUM(i.balance) as outstanding_total", [$today, $today, $today])
             ->groupBy('age_bucket')
             ->get()
             ->keyBy('age_bucket');
@@ -177,7 +177,7 @@ class FeeController extends Controller
                 'i.id', 'i.due_date', 'i.balance', 'i.total_amount', 'i.amount_paid',
                 's.first_name', 's.last_name', 's.admission_no',
             ])
-            ->selectRaw("{$bucket} as age_bucket", [$today, $today, $today, $today])
+            ->selectRaw("{$bucket} as age_bucket", [$today, $today, $today])
             ->orderBy('i.due_date')
             ->paginate(25)
             ->withQueryString();
