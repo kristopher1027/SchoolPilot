@@ -143,17 +143,13 @@ class ParentPortalController extends Controller
             ->whereKey($announcement)
             ->firstOrFail();
 
-        DB::table('announcement_reads')->updateOrInsert(
-            [
-                'announcement_id' => $record->id,
-                'user_id' => $user->id,
-            ],
-            [
-                'read_at' => now(),
-                'updated_at' => now(),
-                'created_at' => now(),
-            ]
-        );
+        DB::table('announcement_reads')->insertOrIgnore([
+            'announcement_id' => $record->id,
+            'user_id' => $user->id,
+            'read_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         return redirect('/school/' . $request->route('school') . '/parent-portal')
             ->with('success', 'Announcement marked as read.');
