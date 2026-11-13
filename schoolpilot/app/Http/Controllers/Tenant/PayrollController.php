@@ -93,10 +93,18 @@ class PayrollController extends Controller
             foreach ($data['component_ids'] ?? [] as $componentId) {
                 $definition = DB::table('salary_components')->where('id', $componentId)->where('is_active', true)->first();
                 abort_unless($definition, 422, 'A selected salary component is inactive.');
+                $override = $data['component_overrides'][$componentId] ?? null;
+                if ($override !== null) {
+                    abort_unless(
+                        $this->isValidComponentValue($definition->calculation, (float) $override),
+                        422,
+                        'Percentage salary component overrides cannot exceed 100%.'
+                    );
+                }
                 DB::table('salary_assignment_components')->insert([
                     'salary_assignment_id' => $id,
                     'salary_component_id' => $componentId,
-                    'amount_override' => $data['component_overrides'][$componentId] ?? null,
+                    'amount_override' => $override,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -323,6 +331,11 @@ class PayrollController extends Controller
         abort_unless($payslip, 404);
 
         return view('tenant.payroll.payslip', compact('payslip'));
+    }
+
+    private function isValidComponentValue(string $calculation, float $value): bool
+    {
+        return $calculation !== 'percentage' || $value <= 100;
     }
 
     private function componentAmount(float $base, string $calculation, float $value): float
