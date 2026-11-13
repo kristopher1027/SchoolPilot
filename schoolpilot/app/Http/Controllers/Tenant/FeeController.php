@@ -134,6 +134,57 @@ class FeeController extends Controller
         return preg_match('/^[=+@\\-\\t\\r]/', $value) ? "'" . $value : $value;
     }
 
+    public function invoiceAging()
+    {
+        $today = today()->toDateString();
+        $daysOverdue = 'CAST(julianday(?) - julianday(i.due_date) AS INTEGER)';
+        $bucket = "CASE
+            WHEN {$daysOverdue} BETWEEN 1 AND 30 THEN '1-30 days'
+            WHEN {$daysOverdue} BETWEEN 31 AND 60 THEN '31-60 days'
+            WHEN {$daysOverdue} BETWEEN 61 AND 90 THEN '61-90 days'
+            ELSE 'Over 90 days'
+        END";
+
+        $baseQuery = DB::table('invoices as i')
+            ->join('students as s', 's.id', '=', 'i.student_id')
+            ->whereNotNull('i.due_date')
+            ->whereDate('i.due_date', '<', $today)
+            ->where('i.balance', '>', 0)
+            ->where('i.status', '!=', 'paid');
+
+        $aging = (clone $baseQuery)
+            ->selectRaw("{$bucket} as age_bucket, COUNT(i.id) as invoice_count, SUM(i.balance) as outstanding_total", [$today, $today, $today, $today])
+            ->groupBy('age_bucket')
+            ->get()
+            ->keyBy('age_bucket');
+
+        $labels = ['1-30 days', '31-60 days', '61-90 days', 'Over 90 days'];
+        $summary = collect($labels)->mapWithKeys(function ($label) use ($aging) {
+            $row = $aging->get($label);
+
+            return [$label => [
+                'count' => (int) ($row->invoice_count ?? 0),
+                'balance' => round((float) ($row->outstanding_total ?? 0), 2),
+            ]];
+        });
+        $summary['total'] = [
+            'count' => (int) (clone $baseQuery)->count(),
+            'balance' => round((float) (clone $baseQuery)->sum('i.balance'), 2),
+        ];
+
+        $invoices = (clone $baseQuery)
+            ->select([
+                'i.id', 'i.due_date', 'i.balance', 'i.total_amount', 'i.amount_paid',
+                's.first_name', 's.last_name', 's.admission_no',
+            ])
+            ->selectRaw("{$bucket} as age_bucket", [$today, $today, $today, $today])
+            ->orderBy('i.due_date')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('tenant.fees.aging', compact('summary', 'invoices'));
+    }
+
     public function overdueInvoices()
     {
         $overdueQuery = Invoice::with([
