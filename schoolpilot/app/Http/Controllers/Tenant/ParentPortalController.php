@@ -58,6 +58,14 @@ class ParentPortalController extends Controller
             ->groupBy('student_id')
             ->map(fn ($records) => $records->take(5));
 
+        $attendanceSummary = DB::table('attendance_records')
+            ->whereIn('student_id', $studentIds)
+            ->select('student_id', 'status')
+            ->selectRaw('COUNT(*) as record_count')
+            ->groupBy('student_id', 'status')
+            ->get()
+            ->groupBy('student_id');
+
         $classIds = $guardian->students->pluck('class_id')->filter()->unique()->values();
         $timetable = DB::table('timetable_entries')
             ->join('subjects', 'subjects.id', '=', 'timetable_entries.subject_id')
@@ -160,6 +168,7 @@ class ParentPortalController extends Controller
         return view('tenant.parent-portal.dashboard', compact(
             'guardian',
             'attendance',
+            'attendanceSummary',
             'timetable',
             'publishedResults',
             'invoices',

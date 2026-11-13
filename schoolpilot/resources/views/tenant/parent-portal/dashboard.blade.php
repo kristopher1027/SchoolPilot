@@ -200,8 +200,27 @@
 
                 <div class="grid grid-cols-1 gap-5 p-5 lg:grid-cols-2">
                     <div>
-                        <h5 class="mb-3 font-semibold text-gray-800">Recent attendance</h5>
+                        <h5 class="mb-3 font-semibold text-gray-800">Attendance overview</h5>
                         @php($studentAttendance = $attendance->get($student->id, collect()))
+                        @php($studentAttendanceSummary = $attendanceSummary->get($student->id, collect()))
+                        @php($attendanceTotal = (int) $studentAttendanceSummary->sum('record_count'))
+                        @if($attendanceTotal > 0)
+                            <div class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                                @foreach($studentAttendanceSummary as $statusSummary)
+                                    <div class="rounded border bg-gray-50 p-3">
+                                        <p class="text-xs capitalize text-gray-500">{{ str_replace('_', ' ', $statusSummary->status) }}</p>
+                                        <p class="text-xl font-bold text-gray-800">{{ $statusSummary->record_count }}</p>
+                                    </div>
+                                @endforeach
+                                <div class="rounded border bg-blue-50 p-3">
+                                    <p class="text-xs text-blue-700">Total records</p>
+                                    <p class="text-xl font-bold text-blue-800">{{ $attendanceTotal }}</p>
+                                </div>
+                            </div>
+                        @else
+                            <p class="mb-3 text-sm text-gray-500">No attendance records available yet.</p>
+                        @endif
+                        <h6 class="mb-2 text-sm font-semibold text-gray-700">Latest records</h6>
                         @if($studentAttendance->isEmpty())
                             <p class="text-sm text-gray-500">No attendance records available yet.</p>
                         @else
