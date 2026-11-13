@@ -58,7 +58,8 @@ class UseSchoolDatabase
             abort(503, 'The school database configuration is invalid.');
         }
 
-        $tenantDatabase = database_path('tenants/' . $databaseName);
+        $tenantDirectory = (string) Config::get('tenancy.database.sqlite.path', database_path('tenants'));
+        $tenantDatabase = rtrim($tenantDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $databaseName;
 
         if (! is_file($tenantDatabase)) {
             abort(503, 'The school database is currently unavailable.');
