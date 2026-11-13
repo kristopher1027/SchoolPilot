@@ -24,6 +24,72 @@
                     </div>
                 </div>
 
+                @php
+                    $studentInvoices = $invoices->get($student->id, collect());
+                    $studentInvoiceIds = $studentInvoices->pluck('id');
+                    $outstanding = (float) $studentInvoices->sum('balance');
+                    $invoiced = (float) $studentInvoices->sum('total_amount');
+                    $paid = (float) $studentInvoices->sum('amount_paid');
+                @endphp
+                <div class="border-b bg-gray-50 p-5">
+                    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h5 class="font-semibold text-gray-800">Fee statement</h5>
+                        <span class="text-xs text-gray-500">Read-only · Contact the school for corrections or payment arrangements</span>
+                    </div>
+                    <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div class="rounded bg-white p-3 shadow-sm"><p class="text-xs text-gray-500">Total invoiced</p><p class="text-lg font-bold">₦{{ number_format($invoiced, 2) }}</p></div>
+                        <div class="rounded bg-white p-3 shadow-sm"><p class="text-xs text-gray-500">Recorded as paid</p><p class="text-lg font-bold text-green-700">₦{{ number_format($paid, 2) }}</p></div>
+                        <div class="rounded bg-white p-3 shadow-sm"><p class="text-xs text-gray-500">Outstanding balance</p><p class="text-lg font-bold {{ $outstanding > 0 ? 'text-amber-700' : 'text-green-700' }}">₦{{ number_format($outstanding, 2) }}</p></div>
+                    </div>
+                    @if($studentInvoices->isEmpty())
+                        <p class="text-sm text-gray-500">No fee invoices are available.</p>
+                    @else
+                        <div class="overflow-x-auto rounded border bg-white">
+                            <table class="min-w-full divide-y">
+                                <thead class="bg-gray-100 text-left text-xs uppercase text-gray-500">
+                                    <tr><th class="px-3 py-2">Session / term</th><th class="px-3 py-2">Due date</th><th class="px-3 py-2">Invoiced</th><th class="px-3 py-2">Paid</th><th class="px-3 py-2">Balance</th><th class="px-3 py-2">Status</th></tr>
+                                </thead>
+                                <tbody class="divide-y">
+                                    @foreach($studentInvoices as $invoice)
+                                        <tr>
+                                            <td class="px-3 py-3 text-sm"><p class="font-medium">{{ $invoice->session_name }}</p><p class="text-xs text-gray-500">{{ $invoice->term_name }}</p></td>
+                                            <td class="whitespace-nowrap px-3 py-3 text-sm">{{ $invoice->due_date ? \Illuminate\Support\Carbon::parse($invoice->due_date)->format('d M Y') : '—' }}</td>
+                                            <td class="whitespace-nowrap px-3 py-3 text-sm">₦{{ number_format((float) $invoice->total_amount, 2) }}</td>
+                                            <td class="whitespace-nowrap px-3 py-3 text-sm text-green-700">₦{{ number_format((float) $invoice->amount_paid, 2) }}</td>
+                                            <td class="whitespace-nowrap px-3 py-3 text-sm font-semibold">₦{{ number_format((float) $invoice->balance, 2) }}</td>
+                                            <td class="px-3 py-3 text-sm capitalize">{{ $invoice->status }}</td>
+                                        </tr>
+                                        @if($payments->get($invoice->id, collect())->isNotEmpty())
+                                            <tr><td colspan="6" class="bg-gray-50 px-3 py-2">
+                                                <p class="mb-1 text-xs font-semibold text-gray-600">Recorded payments</p>
+                                                <div class="space-y-1">
+                                                    @foreach($payments->get($invoice->id, collect()) as $payment)
+                                                        <div class="flex flex-wrap justify-between gap-2 text-xs text-gray-600">
+                                                            <span>{{ $payment->paid_at ? \Illuminate\Support\Carbon::parse($payment->paid_at)->format('d M Y') : 'Date unavailable' }} · {{ ucfirst($payment->method) }} · Receipt {{ $payment->receipt_no }}</span>
+                                                            <span class="font-medium">₦{{ number_format((float) $payment->amount, 2) }}</span>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </td></tr>
+                                        @endif
+                                        @if($refunds->get($invoice->id, collect())->isNotEmpty())
+                                            <tr><td colspan="6" class="bg-amber-50 px-3 py-2">
+                                                <p class="mb-1 text-xs font-semibold text-amber-800">Approved refunds</p>
+                                                @foreach($refunds->get($invoice->id, collect()) as $refund)
+                                                    <div class="flex flex-wrap justify-between gap-2 text-xs text-amber-800">
+                                                        <span>{{ ucfirst($refund->status) }}{{ $refund->settled_at ? ' · Settled ' . \Illuminate\Support\Carbon::parse($refund->settled_at)->format('d M Y') : ' · Awaiting settlement' }}</span>
+                                                        <span>₦{{ number_format((float) $refund->amount, 2) }}</span>
+                                                    </div>
+                                                @endforeach
+                                            </td></tr>
+                                        @endif
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+
                 <div class="grid grid-cols-1 gap-5 p-5 lg:grid-cols-2">
                     <div>
                         <h5 class="mb-3 font-semibold text-gray-800">Recent attendance</h5>
