@@ -317,6 +317,8 @@ Route::prefix('school/{school}')->group(function () {
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar')->group(function () {
                 Route::get('/fees', [FeeController::class, 'index']);
+                Route::get('/fees/reconciliation', [FeeController::class, 'reconciliation']);
+                Route::get('/fees/reconciliation/export', [FeeController::class, 'exportReconciliation']);
                 Route::get('/fees/items/create', [FeeController::class, 'createFeeItem']);
                 Route::post('/fees/items', [FeeController::class, 'storeFeeItem']);
                 Route::get('/fees/invoices/create', [FeeController::class, 'createInvoice']);
