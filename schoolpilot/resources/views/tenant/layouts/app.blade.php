@@ -40,6 +40,10 @@
                     <a href="/school/greenfield/assignments" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Teacher Assignments</a>
                 @endif
 
+                @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'bursar', 'librarian']))
+                    <a href="/school/{{ request()->route('school') }}/library" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Library</a>
+                @endif
+
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'bursar']))
                     <a href="/school/{{ request()->route('school') }}/fees" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Fees & Payments</a>
                 @endif
