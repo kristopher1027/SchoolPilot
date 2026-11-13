@@ -1,8 +1,8 @@
 <?php
 
-namespace App\\Models\\Tenant;
+namespace App\Models\Tenant;
 
-use Illuminate\\Database\\Eloquent\\Model;
+use Illuminate\Database\Eloquent\Model;
 
 class LibraryReservation extends Model
 {
