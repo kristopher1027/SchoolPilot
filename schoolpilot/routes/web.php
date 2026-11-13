@@ -15,6 +15,7 @@ use App\Http\Controllers\Tenant\FeeController;
 use App\Http\Controllers\Tenant\AdmissionController;
 use App\Http\Controllers\Tenant\LibraryController;
 use App\Http\Controllers\Tenant\InventoryController;
+use App\Http\Controllers\Tenant\TransportController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Tenant\AcademicSession;
@@ -282,6 +283,23 @@ Route::prefix('school/{school}')->group(function () {
                 Route::post('/inventory/assets/{asset}/status', [InventoryController::class, 'updateAssetStatus'])->whereNumber('asset');
                 Route::post('/inventory/assets/{asset}/maintenance', [InventoryController::class, 'storeMaintenance'])->whereNumber('asset');
             });
+
+
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar')->group(function () {
+                Route::get('/transport', [TransportController::class, 'index']);
+                Route::post('/transport/vehicles', [TransportController::class, 'storeVehicle']);
+                Route::post('/transport/stops', [TransportController::class, 'storeStop']);
+                Route::post('/transport/routes', [TransportController::class, 'storeRoute']);
+                Route::post('/transport/assignments', [TransportController::class, 'assignStudent']);
+                Route::post('/transport/assignments/{assignment}/end', [TransportController::class, 'endAssignment'])->whereNumber('assignment');
+                Route::post('/transport/documents', [TransportController::class, 'storeDocument']);
+                Route::post('/transport/trips', [TransportController::class, 'storeTrip']);
+                Route::post('/transport/trips/{trip}/attendance', [TransportController::class, 'recordAttendance'])->whereNumber('trip');
+                Route::post('/transport/incidents', [TransportController::class, 'storeIncident']);
+                Route::post('/transport/incidents/{incident}', [TransportController::class, 'updateIncident'])->whereNumber('incident');
+                Route::post('/transport/maintenance', [TransportController::class, 'storeMaintenance']);
+            });
+            Route::middleware(RoleMiddleware::class . ':parent')->get('/transport/my-children', [TransportController::class, 'parentIndex']);
 
             Route::get('/timetable', [TimetableController::class, 'index'])
                 ->middleware(RoleMiddleware::class . ':school_admin,principal,vice_principal,dean,hod,class_teacher,subject_teacher');
