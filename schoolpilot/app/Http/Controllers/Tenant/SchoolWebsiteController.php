@@ -168,6 +168,45 @@ class SchoolWebsiteController extends Controller
         return $this->back($request, 'News post saved.');
     }
 
+    public function updatePage(Request $request, int $page)
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:180'],
+            'slug' => ['nullable', 'alpha_dash', 'max:180', Rule::unique('school_website_pages', 'slug')->ignore($page)],
+            'content' => ['required', 'string', 'max:50000'],
+            'status' => ['required', Rule::in(['draft', 'published'])],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:100000'],
+        ]);
+        $data['slug'] = Str::slug($data['slug'] ?: $data['title']);
+        if (DB::table('school_website_pages')->where('slug', $data['slug'])->where('id', '!=', $page)->exists()) {
+            throw ValidationException::withMessages(['slug' => 'A page already uses this URL slug.']);
+        }
+        $old = DB::table('school_website_pages')->where('id', $page)->first(); abort_unless($old, 404);
+        DB::table('school_website_pages')->where('id', $page)->update($data + ['sort_order' => $data['sort_order'] ?? 0, 'updated_at' => now()]);
+        $this->audit('website.page.updated', 'school_website_page', $page, ['title' => $old->title, 'slug' => $old->slug, 'status' => $old->status], $data);
+        return $this->back($request, 'Website page updated.');
+    }
+
+    public function updatePost(Request $request, int $post)
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:180'],
+            'slug' => ['nullable', 'alpha_dash', 'max:180', Rule::unique('school_website_posts', 'slug')->ignore($post)],
+            'category' => ['nullable', 'string', 'max:80'], 'excerpt' => ['nullable', 'string', 'max:500'],
+            'content' => ['required', 'string', 'max:50000'], 'cover_image_url' => ['nullable', 'url', 'max:2048'],
+            'status' => ['required', Rule::in(['draft', 'published'])], 'published_at' => ['nullable', 'date'],
+        ]);
+        $data['slug'] = Str::slug($data['slug'] ?: $data['title']);
+        if (DB::table('school_website_posts')->where('slug', $data['slug'])->where('id', '!=', $post)->exists()) {
+            throw ValidationException::withMessages(['slug' => 'A news post already uses this URL slug.']);
+        }
+        $old = DB::table('school_website_posts')->where('id', $post)->first(); abort_unless($old, 404);
+        $data['published_at'] = $data['status'] === 'published' ? ($data['published_at'] ?? $old->published_at ?? now()) : null;
+        DB::table('school_website_posts')->where('id', $post)->update($data + ['updated_at' => now()]);
+        $this->audit('website.post.updated', 'school_website_post', $post, ['title' => $old->title, 'status' => $old->status], $data);
+        return $this->back($request, 'News post updated.');
+    }
+
     public function updatePageStatus(Request $request, int $page)
     {
         $data = $request->validate(['status' => ['required', Rule::in(['draft', 'published'])]]);
@@ -239,6 +278,27 @@ class SchoolWebsiteController extends Controller
         DB::table('school_events')->where('id', $event)->update($data + ['updated_at' => now()]);
         $this->audit('website.event.updated', 'school_event', $event, ['status' => $old->status, 'registration_open' => $old->registration_open], $data);
         return $this->back($request, 'Event status updated.');
+    }
+
+    public function updateEventDetails(Request $request, int $event)
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:180'],
+            'slug' => ['nullable', 'alpha_dash', 'max:180', Rule::unique('school_events', 'slug')->ignore($event)],
+            'description' => ['required', 'string', 'max:10000'], 'venue' => ['nullable', 'string', 'max:180'],
+            'starts_at' => ['required', 'date'], 'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'capacity' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'registration_open' => ['nullable', 'boolean'], 'status' => ['required', Rule::in(['draft', 'published', 'cancelled'])],
+        ]);
+        $data['slug'] = Str::slug($data['slug'] ?: $data['title']);
+        if (DB::table('school_events')->where('slug', $data['slug'])->where('id', '!=', $event)->exists()) {
+            throw ValidationException::withMessages(['slug' => 'An event already uses this URL slug.']);
+        }
+        $old = DB::table('school_events')->where('id', $event)->first(); abort_unless($old, 404);
+        $data['registration_open'] = $request->boolean('registration_open');
+        DB::table('school_events')->where('id', $event)->update($data + ['updated_at' => now()]);
+        $this->audit('website.event.details_updated', 'school_event', $event, ['title' => $old->title, 'status' => $old->status], $data);
+        return $this->back($request, 'Event details updated.');
     }
 
     public function storeClub(Request $request)
