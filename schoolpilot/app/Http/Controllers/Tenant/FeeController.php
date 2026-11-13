@@ -36,6 +36,103 @@ class FeeController extends Controller
         return view('tenant.fees.index', compact('invoices', 'feeItems', 'summary'));
     }
 
+    public function reconciliation(Request $request)
+    {
+        $filters = $this->validatedReconciliationFilters($request);
+        $paymentsQuery = $this->reconciliationQuery($filters);
+        $summary = [
+            'count' => (clone $paymentsQuery)->count(),
+            'collected' => round((float) (clone $paymentsQuery)->sum('p.amount'), 2),
+        ];
+        $byMethod = (clone $paymentsQuery)
+            ->select('p.method')
+            ->selectRaw('COUNT(p.id) as payment_count, SUM(p.amount) as amount_total')
+            ->groupBy('p.method')
+            ->orderBy('p.method')
+            ->get();
+        $payments = $paymentsQuery
+            ->select([
+                'p.id', 'p.amount', 'p.method', 'p.reference', 'p.receipt_no', 'p.paid_at',
+                'i.id as invoice_id', 's.admission_no', 's.first_name', 's.last_name',
+            ])
+            ->orderByDesc('p.paid_at')
+            ->orderByDesc('p.id')
+            ->paginate(25)
+            ->withQueryString();
+
+        return view('tenant.fees.reconciliation', compact('filters', 'summary', 'byMethod', 'payments'));
+    }
+
+    public function exportReconciliation(Request $request): StreamedResponse
+    {
+        $filters = $this->validatedReconciliationFilters($request);
+        $payments = $this->reconciliationQuery($filters)
+            ->join('academic_sessions as a', 'a.id', '=', 'i.academic_session_id')
+            ->join('terms as t', 't.id', '=', 'i.term_id')
+            ->select([
+                'p.paid_at', 'p.receipt_no', 'p.reference', 'p.method', 'p.amount',
+                's.admission_no', 's.first_name', 's.last_name', 'i.id as invoice_id',
+                'a.name as session_name', 't.name as term_name',
+            ])
+            ->orderBy('p.paid_at')
+            ->orderBy('p.id')
+            ->get();
+
+        $this->audit('fee_reconciliation.exported', 'fee_reconciliation', 0, null, $filters);
+        $filename = 'schoolpilot-fee-reconciliation-' . now()->format('Ymd-His') . '.csv';
+
+        return response()->streamDownload(function () use ($payments) {
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['Paid at', 'Receipt number', 'Payment reference', 'Method', 'Amount (NGN)', 'Admission number', 'Student', 'Invoice ID', 'Academic session', 'Term']);
+            foreach ($payments as $payment) {
+                $values = [
+                    $payment->paid_at,
+                    $payment->receipt_no,
+                    $payment->reference,
+                    $payment->method,
+                    $payment->amount,
+                    $payment->admission_no,
+                    trim($payment->first_name . ' ' . $payment->last_name),
+                    $payment->invoice_id,
+                    $payment->session_name,
+                    $payment->term_name,
+                ];
+                fputcsv($output, array_map(fn ($value) => $this->safeCsvValue($value), $values));
+            }
+            fclose($output);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function validatedReconciliationFilters(Request $request): array
+    {
+        $filters = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'method' => ['nullable', Rule::in(['cash', 'transfer', 'paystack', 'flutterwave'])],
+        ]);
+
+        return array_merge(['from' => null, 'to' => null, 'method' => null], $filters);
+    }
+
+    private function reconciliationQuery(array $filters)
+    {
+        return DB::table('payments as p')
+            ->join('invoices as i', 'i.id', '=', 'p.invoice_id')
+            ->join('students as s', 's.id', '=', 'i.student_id')
+            ->when($filters['from'], fn ($query) => $query->whereDate('p.paid_at', '>=', $filters['from']))
+            ->when($filters['to'], fn ($query) => $query->whereDate('p.paid_at', '<=', $filters['to']))
+            ->when($filters['method'], fn ($query) => $query->where('p.method', $filters['method']));
+    }
+
+    private function safeCsvValue(mixed $value): mixed
+    {
+        if (! is_string($value) || $value === '') {
+            return $value;
+        }
+
+        return preg_match('/^[=+@\\-\\t\\r]/', $value) ? "'" . $value : $value;
+    }
+
     public function createFeeItem()
     {
         $sessions = AcademicSession::orderByDesc('start_date')->get();
