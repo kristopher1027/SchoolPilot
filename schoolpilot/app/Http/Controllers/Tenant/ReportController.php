@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tenant;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -13,7 +14,7 @@ class ReportController extends Controller
     public function index(Request $request)
     {
         $filters = $this->validatedFilters($request);
-        $data = $this->buildReportData($filters);
+        $data = $this->visibleReportData($this->buildReportData($filters));
         $sessions = DB::table('academic_sessions')->orderByDesc('start_date')->get();
         $terms = DB::table('terms')->when($filters['session_id'], fn ($q) => $q->where('academic_session_id', $filters['session_id']))->orderBy('start_date')->get();
         $classes = DB::table('classes')->orderBy('name')->get();
@@ -183,6 +184,25 @@ class ReportController extends Controller
         if (Schema::hasTable('transport_routes')) $data['transport']['active_routes'] = DB::table('transport_routes')->where('status', 'active')->count();
         if (Schema::hasTable('transport_student_assignments')) $data['transport']['active_assignments'] = DB::table('transport_student_assignments')->where('status', 'active')->count();
         if (Schema::hasTable('transport_incidents')) $data['transport']['incidents'] = DB::table('transport_incidents')->count();
+
+        return $data;
+    }
+
+    private function visibleReportData(array $data): array
+    {
+        $role = Auth::guard('school')->user()->role;
+
+        if ($role === 'bursar') {
+            return ['finance' => $data['finance']];
+        }
+
+        if (in_array($role, ['dean', 'hod'], true)) {
+            return [
+                'enrollment' => $data['enrollment'],
+                'attendance' => $data['attendance'],
+                'academics' => $data['academics'],
+            ];
+        }
 
         return $data;
     }
