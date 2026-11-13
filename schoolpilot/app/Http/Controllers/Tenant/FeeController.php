@@ -181,7 +181,7 @@ class FeeController extends Controller
         ]);
 
         $payment = DB::transaction(function () use ($data, $invoice) {
-            $lockedInvoice = Invoice::whereKey($invoice->id)->firstOrFail();
+            $lockedInvoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
 
             if ($lockedInvoice->status === 'paid' || (float) $lockedInvoice->balance <= 0) {
                 throw ValidationException::withMessages(['amount' => 'This invoice has already been fully paid.']);
