@@ -29,7 +29,7 @@ class PayrollCalculationTest extends TestCase
     public function test_payroll_approval_requires_item_count_and_all_totals_to_match(): void
     {
         $controller = new PayrollController();
-        $method = new \\ReflectionMethod($controller, 'payrollTotalsMatch');
+        $method = new \ReflectionMethod($controller, 'payrollTotalsMatch');
         $method->setAccessible(true);
 
         $payroll = (object) [
