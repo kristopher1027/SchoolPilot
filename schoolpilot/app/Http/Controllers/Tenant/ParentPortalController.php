@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Tenant;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant\AttendanceRecord;
+use App\Models\Tenant\Announcement;
+use Illuminate\Http\Request;
 use App\Models\Tenant\Guardian;
 use App\Models\Tenant\ResultApproval;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +25,18 @@ class ParentPortalController extends Controller
                 ->orderBy('last_name')
                 ->orderBy('first_name')])
             ->firstOrFail();
+
+        $announcements = Announcement::query()
+            ->visibleTo($user)
+            ->with('author:id,name')
+            ->latest('published_at')
+            ->limit(10)
+            ->get();
+
+        $announcementReads = DB::table('announcement_reads')
+            ->where('user_id', $user->id)
+            ->whereIn('announcement_id', $announcements->pluck('id'))
+            ->pluck('read_at', 'announcement_id');
 
         $studentIds = $guardian->students->pluck('id');
         $attendance = AttendanceRecord::query()
@@ -113,7 +127,35 @@ class ParentPortalController extends Controller
             'publishedResults',
             'invoices',
             'payments',
-            'refunds'
+            'refunds',
+            'announcements',
+            'announcementReads'
         ));
+    }
+
+    public function markAnnouncementRead(Request $request, int $announcement)
+    {
+        $user = Auth::guard('school')->user();
+        abort_unless($user && $user->role === 'parent', 403);
+
+        $record = Announcement::query()
+            ->visibleTo($user)
+            ->whereKey($announcement)
+            ->firstOrFail();
+
+        DB::table('announcement_reads')->updateOrInsert(
+            [
+                'announcement_id' => $record->id,
+                'user_id' => $user->id,
+            ],
+            [
+                'read_at' => now(),
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+
+        return redirect('/school/' . $request->route('school') . '/parent-portal')
+            ->with('success', 'Announcement marked as read.');
     }
 }
