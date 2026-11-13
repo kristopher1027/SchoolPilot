@@ -38,10 +38,7 @@ class InventoryController extends Controller
         $maintenance = AssetMaintenance::with('asset')->latest()->limit(20)->get();
 
         $stockRows = InventoryStock::with('item')->get();
-        $lowStock = $stockRows->groupBy('item_id')->filter(function ($rows) {
-            $item = $rows->first()->item;
-            return $item && $rows->sum(fn ($row) => (float) $row->quantity) <= (float) $item->reorder_level;
-        });
+        $lowStock = $items->filter(fn ($item) => (float) $item->stocks->sum('quantity') <= (float) $item->reorder_level);
         $summary = [
             'items' => $items->count(),
             'low_stock' => $lowStock->count(),
@@ -148,16 +145,20 @@ class InventoryController extends Controller
         $data = $request->validate([
             'reason' => ['nullable', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1', 'max:50'],
-            'items.*.item_id' => ['required', 'integer', 'distinct', 'exists:inventory_items,id'],
-            'items.*.quantity' => ['required', 'numeric', 'gt:0', 'max:999999999'],
+            'items.*.item_id' => ['nullable', 'integer', 'distinct', 'exists:inventory_items,id'],
+            'items.*.quantity' => ['nullable', 'numeric', 'gt:0', 'max:999999999'],
             'items.*.estimated_unit_cost' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
         ]);
-        DB::transaction(function () use ($data) {
+        $lines = collect($data['items'])->filter(fn ($line) => !empty($line['item_id']))->values();
+        if ($lines->isEmpty() || $lines->contains(fn ($line) => empty($line['quantity']))) {
+            throw ValidationException::withMessages(['items' => 'Add at least one item and quantity to the purchase request.']);
+        }
+        DB::transaction(function () use ($data, $lines) {
             $request = PurchaseRequest::create([
                 'request_no' => $this->number('PR'), 'requested_by' => Auth::guard('school')->id(),
                 'status' => 'pending', 'reason' => $data['reason'] ?? null,
             ]);
-            foreach ($data['items'] as $item) {
+            foreach ($lines as $item) {
                 $request->items()->create($item);
             }
             $this->audit('purchase_request.created', 'purchase_request', $request->id, null, ['request_no' => $request->request_no]);
@@ -188,24 +189,28 @@ class InventoryController extends Controller
             'expected_at' => ['nullable', 'date', 'after_or_equal:today'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1', 'max:50'],
-            'items.*.item_id' => ['required', 'integer', 'distinct', 'exists:inventory_items,id'],
-            'items.*.quantity_ordered' => ['required', 'numeric', 'gt:0', 'max:999999999'],
-            'items.*.unit_cost' => ['required', 'numeric', 'min:0', 'max:999999999'],
+            'items.*.item_id' => ['nullable', 'integer', 'distinct', 'exists:inventory_items,id'],
+            'items.*.quantity_ordered' => ['nullable', 'numeric', 'gt:0', 'max:999999999'],
+            'items.*.unit_cost' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
         ]);
+        $lines = collect($data['items'])->filter(fn ($line) => !empty($line['item_id']))->values();
+        if ($lines->isEmpty() || $lines->contains(fn ($line) => !isset($line['quantity_ordered'], $line['unit_cost']))) {
+            throw ValidationException::withMessages(['items' => 'Add at least one item with a quantity and unit cost to the purchase order.']);
+        }
         if (!empty($data['purchase_request_id'])) {
             $approved = PurchaseRequest::whereKey($data['purchase_request_id'])->where('status', 'approved')->exists();
             if (!$approved) {
                 throw ValidationException::withMessages(['purchase_request_id' => 'Only an approved purchase request can be linked to an order.']);
             }
         }
-        DB::transaction(function () use ($data) {
+        DB::transaction(function () use ($data, $lines) {
             $order = PurchaseOrder::create([
                 'order_no' => $this->number('PO'), 'supplier_id' => $data['supplier_id'],
                 'purchase_request_id' => $data['purchase_request_id'] ?? null,
                 'created_by' => Auth::guard('school')->id(), 'status' => 'ordered',
                 'ordered_at' => today(), 'expected_at' => $data['expected_at'] ?? null, 'notes' => $data['notes'] ?? null,
             ]);
-            foreach ($data['items'] as $item) {
+            foreach ($lines as $item) {
                 $order->items()->create($item);
             }
             $this->audit('purchase_order.created', 'purchase_order', $order->id, null, ['order_no' => $order->order_no]);
@@ -220,10 +225,10 @@ class InventoryController extends Controller
             'received_at' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.quantity_received' => ['required', 'numeric', 'gt:0', 'max:999999999'],
+            'items.*.quantity_received' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
         ]);
         DB::transaction(function () use ($data, $purchaseOrder) {
-            $order = PurchaseOrder::with('items')->whereKey($purchaseOrder->id)->lockForUpdate()->firstOrFail();
+            $order = PurchaseOrder::with('items.item')->whereKey($purchaseOrder->id)->lockForUpdate()->firstOrFail();
             abort_if(in_array($order->status, ['received', 'cancelled'], true), 422, 'This order cannot receive more goods.');
             $receipt = GoodsReceipt::create([
                 'purchase_order_id' => $order->id, 'received_by' => Auth::guard('school')->id(),
