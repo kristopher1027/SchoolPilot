@@ -423,7 +423,7 @@ class FeeController extends Controller
                 ->where('payment_id', $recorded->id)
                 ->where('status', 'pending')
                 ->sum('amount');
-            $available = round((float) $recorded->amount - $approvedRefunds - $pendingRefunds, 2);
+            $available = $this->refundableAmount((float) $recorded->amount, $approvedRefunds, $pendingRefunds);
             $amount = round((float) $data['amount'], 2);
 
             if ($amount > $available) {
@@ -470,7 +470,7 @@ class FeeController extends Controller
             }
 
             $actorId = (int) Auth::guard('school')->id();
-            if ((int) $record->requested_by === $actorId) {
+            if (! $this->canReviewRefund((int) $record->requested_by, $actorId)) {
                 abort(403, 'The person who requested a refund cannot approve it. Another authorized manager must review it.');
             }
 
@@ -585,6 +585,16 @@ class FeeController extends Controller
         $payment->load(['invoice.student', 'invoice.academicSession', 'invoice.term']);
 
         return view('tenant.fees.receipt', compact('payment'));
+    }
+
+    private function refundableAmount(float $paymentAmount, float $approvedRefunds, float $pendingRefunds): float
+    {
+        return max(0, round($paymentAmount - $approvedRefunds - $pendingRefunds, 2));
+    }
+
+    private function canReviewRefund(int $requesterId, int $actorId): bool
+    {
+        return $requesterId !== $actorId;
     }
 
     private function receiptNumber(): string
