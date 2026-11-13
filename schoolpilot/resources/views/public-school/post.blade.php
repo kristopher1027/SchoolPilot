@@ -1,0 +1,2 @@
+@extends('public-school.layout')
+@section('content')<article class="rounded-xl bg-white p-8 shadow-sm">@if($post->cover_image_url)<img src="{{ $post->cover_image_url }}" alt="" class="mb-6 max-h-96 w-full rounded-lg object-cover">@endif<p class="text-sm text-slate-500">{{ $post->published_at }} · {{ $post->category }}</p><h1 class="my-4 text-3xl font-bold">{{ $post->title }}</h1><div class="whitespace-pre-line leading-8 text-slate-700">{{ $post->content }}</div></article>@endsection
