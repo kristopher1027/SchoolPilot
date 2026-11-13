@@ -76,13 +76,23 @@ class LibraryController extends Controller
             'edition' => ['nullable', 'string', 'max:80'],
             'publication_year' => ['nullable', 'integer', 'min:1000', 'max:' . (now()->year + 1)],
             'description' => ['nullable', 'string', 'max:3000'],
-            'accession_numbers' => ['required', 'array', 'min:1', 'max:100'],
-            'accession_numbers.*' => ['required', 'string', 'max:80', 'distinct', 'unique:library_copies,accession_no'],
+            'accession_numbers' => ['required', 'string', 'max:8000'],
         ]);
 
-        DB::transaction(function () use ($data) {
+         $accessionNumbers = collect(preg_split('/\\r\\n|\\r|\\n/', $data['accession_numbers']))
+            ->map(fn ($value) => trim($value))->filter()->values();
+        if ($accessionNumbers->isEmpty() || $accessionNumbers->count() > 100 || $accessionNumbers->unique()->count() !== $accessionNumbers->count()) {
+            return back()->withErrors(['accession_numbers' => 'Enter between 1 and 100 unique accession numbers, one per line.'])->withInput();
+        }
+        foreach ($accessionNumbers as $accessionNo) {
+            if (LibraryCopy::where('accession_no', $accessionNo)->exists()) {
+                return back()->withErrors(['accession_numbers' => 'Accession number ' . $accessionNo . ' is already in use.'])->withInput();
+            }
+        }
+
+        DB::transaction(function () use ($data, $accessionNumbers) {
             $book = LibraryBook::create(collect($data)->except('accession_numbers')->all());
-            foreach ($data['accession_numbers'] as $accessionNo) {
+            foreach ($accessionNumbers as $accessionNo) {
                 $book->copies()->create(['accession_no' => trim($accessionNo)]);
             }
         });
@@ -167,6 +177,7 @@ class LibraryController extends Controller
             'due_at' => ['required', 'date', 'after:today'],
         ]);
 
+        $loan = LibraryLoan::with('copy')->findOrFail($loan->id);
         abort_if($loan->returned_at !== null, 422, 'A returned loan cannot be renewed.');
         $hasReservation = LibraryReservation::where('book_id', $loan->copy->book_id)
             ->where('status', 'pending')->exists();
