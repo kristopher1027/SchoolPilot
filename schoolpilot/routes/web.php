@@ -13,6 +13,7 @@ use App\Http\Controllers\Tenant\TimetableController;
 use App\Http\Controllers\Tenant\AnnouncementController;
 use App\Http\Controllers\Tenant\FeeController;
 use App\Http\Controllers\Tenant\AdmissionController;
+use App\Http\Controllers\Tenant\LibraryController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Tenant\AcademicSession;
@@ -252,6 +253,16 @@ Route::prefix('school/{school}')->group(function () {
                 Route::get('/fees/invoices/{invoice}', [FeeController::class, 'showInvoice'])->whereNumber('invoice');
                 Route::post('/fees/invoices/{invoice}/payments', [FeeController::class, 'storePayment'])->whereNumber('invoice');
                 Route::get('/fees/receipts/{payment}', [FeeController::class, 'receipt'])->whereNumber('payment');
+            });
+
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar,librarian')->group(function () {
+                Route::get('/library', [LibraryController::class, 'index']);
+                Route::post('/library/categories', [LibraryController::class, 'storeCategory']);
+                Route::post('/library/books', [LibraryController::class, 'storeBook']);
+                Route::post('/library/loans', [LibraryController::class, 'issue']);
+                Route::post('/library/loans/{loan}/return', [LibraryController::class, 'returnCopy'])->whereNumber('loan');
+                Route::post('/library/loans/{loan}/renew', [LibraryController::class, 'renew'])->whereNumber('loan');
+                Route::post('/library/reservations', [LibraryController::class, 'reserve']);
             });
 
             Route::get('/timetable', [TimetableController::class, 'index'])
