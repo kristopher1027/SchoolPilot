@@ -76,6 +76,17 @@ class SchoolPilotDemoSetupCommand extends Command
             DB::purge('tenant_sqlite');
             DB::setDefaultConnection('tenant_sqlite');
 
+            // Apply newly added tenant modules to existing school databases before seeding.
+            $migrationExitCode = $this->call('migrate', [
+                '--database' => 'tenant_sqlite',
+                '--path' => database_path('migrations/tenant'),
+                '--realpath' => true,
+                '--force' => true,
+            ]);
+            if ($migrationExitCode !== self::SUCCESS) {
+                throw new \\RuntimeException('Tenant database migrations could not be completed.');
+            }
+
             // This seeder only inserts missing defaults; existing school data is preserved.
             $seedExitCode = $this->call('db:seed', [
                 '--database' => 'tenant_sqlite',
