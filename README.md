@@ -80,3 +80,8 @@ A complete, real-world result approval chain to prevent data tampering:
 ```bash
 git clone https://github.com/kristopher1027/schoolpilot.git
 cd schoolpilot
+
+
+## Deployment
+
+For the current Docker-based Render deployment, persistent SQLite storage, environment variables, demo versus real-school startup, and the production smoke-test checklist, see [Render Deployment Guide](docs/RENDER_DEPLOYMENT.md).
