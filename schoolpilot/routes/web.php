@@ -173,6 +173,10 @@ Route::prefix('school/{school}')->group(function () {
         Route::middleware(['auth:school', EnsureActiveUser::class])->get('/', function () {
             $user = Auth::guard('school')->user();
 
+            if ($user->role === 'parent') {
+                return redirect('/school/' . request()->route('school') . '/parent-portal');
+            }
+
             if (in_array($user->role, ['class_teacher', 'subject_teacher'], true)) {
                 return redirect('/school/' . request()->route('school') . '/teacher-dashboard');
             }
