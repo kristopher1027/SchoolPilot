@@ -189,7 +189,7 @@ class PayrollController extends Controller
 
                 foreach ($components as $component) {
                     $value = $component->amount_override !== null ? (float) $component->amount_override : (float) $component->default_value;
-                    $amount = round($component->calculation === 'percentage' ? $base * $value / 100 : $value, 2);
+                    $amount = $this->componentAmount($base, $component->calculation, $value);
                     if ($component->type === 'allowance') {
                         $allowances += $amount;
                         $breakdown['allowances'][] = ['name' => $component->name, 'amount' => $amount];
@@ -301,6 +301,11 @@ class PayrollController extends Controller
         abort_unless($payslip, 404);
 
         return view('tenant.payroll.payslip', compact('payslip'));
+    }
+
+    private function componentAmount(float $base, string $calculation, float $value): float
+    {
+        return round($calculation === 'percentage' ? $base * $value / 100 : $value, 2);
     }
 
     private function audit(string $action, string $entity, int $id, mixed $old, mixed $new, Request $request): void
