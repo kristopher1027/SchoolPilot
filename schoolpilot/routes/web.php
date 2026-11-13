@@ -336,6 +336,10 @@ Route::prefix('school/{school}')->group(function () {
                 Route::post('/fees/refunds/{refund}/reject', [FeeController::class, 'rejectRefund'])->whereNumber('refund');
             });
 
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar')->group(function () {
+                Route::post('/fees/refunds/{refund}/settle', [FeeController::class, 'settleRefund'])->whereNumber('refund');
+            });
+
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar,librarian')->group(function () {
                 Route::get('/library', [LibraryController::class, 'index']);
                 Route::post('/library/categories', [LibraryController::class, 'storeCategory']);
