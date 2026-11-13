@@ -104,14 +104,14 @@ class LibraryController extends Controller
     {
         $data = $request->validate([
             'copy_id' => ['required', 'integer', 'exists:library_copies,id'],
-            'member_type' => ['required', Rule::in(['student', 'staff'])],
-            'member_id' => ['required', 'integer'],
+            'member' => ['required', 'regex:/^(student|staff):[0-9]+$/],
             'due_at' => ['required', 'date', 'after_or_equal:today'],
         ]);
 
-        $memberExists = $data['member_type'] === 'student'
-            ? Student::whereKey($data['member_id'])->where('status', 'active')->exists()
-            : Staff::whereKey($data['member_id'])->exists();
+        [$memberType, $memberId] = explode(':', $data['member']);
+        $memberExists = $memberType === 'student'
+            ? Student::whereKey($memberId)->where('status', 'active')->exists()
+            : Staff::whereKey($memberId)->exists();
 
         if (! $memberExists) {
             return back()->withErrors(['member_id' => 'Select an active student or valid staff member.'])->withInput();
@@ -124,8 +124,8 @@ class LibraryController extends Controller
             $user = Auth::guard('school')->user();
             LibraryLoan::create([
                 'copy_id' => $copy->id,
-                'member_type' => $data['member_type'],
-                'member_id' => $data['member_id'],
+                'member_type' => $memberType,
+                'member_id' => $memberId,
                 'issued_by' => $user->id,
                 'issued_at' => today(),
                 'due_at' => $data['due_at'],
@@ -133,8 +133,8 @@ class LibraryController extends Controller
             $copy->update(['status' => 'issued']);
 
             LibraryReservation::where('book_id', $copy->book_id)
-                ->where('member_type', $data['member_type'])
-                ->where('member_id', $data['member_id'])
+                ->where('member_type', $memberType)
+                ->where('member_id', $memberId)
                 ->where('status', 'pending')
                 ->oldest('reserved_at')
                 ->limit(1)
@@ -205,8 +205,8 @@ class LibraryController extends Controller
         }
 
         $alreadyReserved = LibraryReservation::where('book_id', $data['book_id'])
-            ->where('member_type', $data['member_type'])
-            ->where('member_id', $data['member_id'])
+            ->where('member_type', $memberType)
+            ->where('member_id', $memberId)
             ->where('status', 'pending')->exists();
 
         if ($alreadyReserved) {
@@ -214,7 +214,9 @@ class LibraryController extends Controller
         }
 
         LibraryReservation::create([
-            ...$data,
+            'book_id' => $data['book_id'],
+            'member_type' => $memberType,
+            'member_id' => $memberId,
             'status' => 'pending',
             'reserved_at' => now(),
         ]);
