@@ -56,7 +56,7 @@
     <div class="divide-y">
         @forelse($invoice->payments as $payment)
             @php
-                $reservedRefunds = (float) $payment->refundRequests->whereIn('status', ['pending', 'approved'])->sum('amount');
+                $reservedRefunds = (float) $payment->refundRequests->whereIn('status', ['pending', 'approved', 'settled'])->sum('amount');
                 $refundable = max(0, round((float) $payment->amount - $reservedRefunds, 2));
                 $canReviewRefund = in_array(auth('school')->user()?->role, ['school_admin', 'principal'], true);
             @endphp
@@ -78,12 +78,24 @@
                                     <p class="text-sm font-semibold">₦{{ number_format((float) $refund->amount, 2) }} · <span class="capitalize">{{ $refund->status }}</span></p>
                                     <p class="text-sm text-gray-600">{{ $refund->reason }}</p>
                                     <p class="text-xs text-gray-500">Requested {{ \Illuminate\Support\Carbon::parse($refund->created_at)->format('d M Y H:i') }} · {{ $refund->reference ?: 'No refund reference' }}</p>
+                                    @if($refund->status === 'settled')
+                                        <p class="mt-1 text-xs text-green-700">Settled {{ \Illuminate\Support\Carbon::parse($refund->settled_at)->format('d M Y H:i') }} · {{ ucfirst(str_replace('_', ' ', $refund->settlement_method)) }} · Ref: {{ $refund->settlement_reference }}</p>
+                                    @elseif($refund->status === 'approved')
+                                        <p class="mt-1 text-xs text-amber-700">Approved, awaiting actual refund settlement.</p>
+                                    @endif
                                 </div>
                                 @if($refund->status === 'pending' && $canReviewRefund)
                                     <div class="flex gap-2">
                                         <form method="POST" action="{{ url('/school/' . request()->route('school') . '/fees/refunds/' . $refund->id . '/approve') }}">@csrf<button class="rounded bg-green-700 px-3 py-2 text-sm text-white" onclick="return confirm('Approve this refund and update the invoice balance?')">Approve</button></form>
                                         <form method="POST" action="{{ url('/school/' . request()->route('school') . '/fees/refunds/' . $refund->id . '/reject') }}">@csrf<button class="rounded border border-red-300 px-3 py-2 text-sm text-red-700" onclick="return confirm('Reject this refund request?')">Reject</button></form>
                                     </div>
+                                @elseif($refund->status === 'approved' && (int) auth('school')->id() !== (int) $refund->requested_by && (int) auth('school')->id() !== (int) $refund->reviewed_by && in_array(auth('school')->user()?->role, ['school_admin', 'principal', 'bursar'], true))
+                                    <form method="POST" action="{{ url('/school/' . request()->route('school') . '/fees/refunds/' . $refund->id . '/settle') }}" class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                                        @csrf
+                                        <select name="settlement_method" required class="rounded border-gray-300 text-sm"><option value="">Settlement method</option><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option></select>
+                                        <input name="settlement_reference" required minlength="3" maxlength="120" placeholder="Transfer / voucher reference" class="rounded border-gray-300 text-sm">
+                                        <button class="rounded bg-blue-700 px-3 py-2 text-sm text-white" onclick="return confirm('Confirm that this refund has actually been paid to the parent or guardian?')">Record settlement</button>
+                                    </form>
                                 @elseif($refund->reviewed_at)
                                     <p class="text-xs text-gray-500">Reviewed {{ \Illuminate\Support\Carbon::parse($refund->reviewed_at)->format('d M Y H:i') }}</p>
                                 @endif
