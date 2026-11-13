@@ -181,18 +181,26 @@ class FeeController extends Controller
         ]);
 
         $payment = DB::transaction(function () use ($data, $invoice) {
-            $lockedInvoice = Invoice::whereKey($invoice->id)->lockForUpdate()->firstOrFail();
-
-            if ($lockedInvoice->status === 'paid' || (float) $lockedInvoice->balance <= 0) {
-                throw ValidationException::withMessages(['amount' => 'This invoice has already been fully paid.']);
-            }
-
             $amount = round((float) $data['amount'], 2);
-            $balance = round((float) $lockedInvoice->balance, 2);
-            if ($amount > $balance) {
-                throw ValidationException::withMessages(['amount' => 'The payment cannot exceed the outstanding balance.']);
+            $sqlAmount = number_format($amount, 2, '.', '');
+
+            // Apply the balance check and update in one SQL statement. This is
+            // safe on SQLite too, where lockForUpdate() does not provide row locks.
+            $updated = Invoice::whereKey($invoice->id)
+                ->where('status', '!=', 'paid')
+                ->where('balance', '>=', $amount)
+                ->increment('amount_paid', $amount, [
+                    'balance' => DB::raw("balance - {$sqlAmount}"),
+                    'status' => DB::raw("CASE WHEN balance - {$sqlAmount} <= 0 THEN 'paid' ELSE 'partial' END"),
+                ]);
+
+            if ($updated !== 1) {
+                throw ValidationException::withMessages([
+                    'amount' => 'The invoice is already paid or the payment exceeds its current outstanding balance.',
+                ]);
             }
 
+            $lockedInvoice = Invoice::findOrFail($invoice->id);
             $staffId = Staff::where('user_id', Auth::guard('school')->id())->value('id');
             $payment = Payment::create([
                 'invoice_id' => $lockedInvoice->id,
@@ -202,14 +210,6 @@ class FeeController extends Controller
                 'paid_at' => now(),
                 'recorded_by' => $staffId,
                 'receipt_no' => $this->receiptNumber(),
-            ]);
-
-            $newPaid = round((float) $lockedInvoice->amount_paid + $amount, 2);
-            $newBalance = round($balance - $amount, 2);
-            $lockedInvoice->update([
-                'amount_paid' => $newPaid,
-                'balance' => $newBalance,
-                'status' => $newBalance <= 0 ? 'paid' : 'partial',
             ]);
 
             $this->audit('payment.recorded', 'payment', $payment->id, null, [
