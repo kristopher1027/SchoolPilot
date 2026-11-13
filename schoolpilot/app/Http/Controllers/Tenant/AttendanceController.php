@@ -131,13 +131,7 @@ class AttendanceController extends Controller
                 ]);
                 $record->save();
 
-                $shouldNotify = in_array($status, ['absent', 'late'], true)
-                    && $previousStatus !== $status;
-                $shouldNotifyCorrection = $previousStatus !== null
-                    && in_array($previousStatus, ['absent', 'late'], true)
-                    && $previousStatus !== $status;
-
-                if ($shouldNotify || $shouldNotifyCorrection) {
+                if ($this->attendanceNotificationType($previousStatus, $status) !== null) {
                     $this->notifyGuardiansOfAttendanceChange($record, $previousStatus, $status);
                 }
             }
@@ -149,6 +143,19 @@ class AttendanceController extends Controller
             'date' => $data['date'],
         ])->with('success', 'Attendance saved successfully.');
     }
+    private function attendanceNotificationType(?string $previousStatus, string $status): ?string
+    {
+        if ($previousStatus === $status) {
+            return null;
+        }
+
+        if ($previousStatus !== null && in_array($previousStatus, ['absent', 'late'], true)) {
+            return 'attendance_updated';
+        }
+
+        return in_array($status, ['absent', 'late'], true) ? 'attendance_alert' : null;
+    }
+
     private function notifyGuardiansOfAttendanceChange(AttendanceRecord $record, ?string $previousStatus, string $status): void
     {
         $student = Student::find($record->student_id);
