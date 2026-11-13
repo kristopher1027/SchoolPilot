@@ -21,13 +21,13 @@ class SendOverdueInvoiceReminders extends Command
      * send the same invoice notice concurrently. Recover abandoned claims after
      * 30 minutes so a crashed worker does not block delivery indefinitely.
      */
-    private function claimReminder(\\Illuminate\\Database\\Query\\Builder $log, int $invoiceId, string $today, string $email): bool
+    private function claimReminder(\Illuminate\Database\Query\Builder $log, int $invoiceId, string $today, string $email): bool
     {
         $base = $log->where('invoice_id', $invoiceId)
             ->where('reminder_date', $today)
             ->where('recipient_email', $email);
 
-        $base->where('status', 'sending')
+        (clone $base)->where('status', 'sending')
             ->where('updated_at', '<', now()->subMinutes(30))
             ->update([
                 'status' => 'failed',
@@ -35,10 +35,7 @@ class SendOverdueInvoiceReminders extends Command
                 'updated_at' => now(),
             ]);
 
-        return $log->where('invoice_id', $invoiceId)
-            ->where('reminder_date', $today)
-            ->where('recipient_email', $email)
-            ->whereIn('status', ['pending', 'failed'])
+        return (clone $base)->whereIn('status', ['pending', 'failed'])
             ->update([
                 'status' => 'sending',
                 'failure_reason' => null,
