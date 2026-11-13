@@ -1,19 +1,19 @@
 <?php
 
-namespace App\\Http\\Controllers\\Tenant;
+namespace App\Http\Controllers\Tenant;
 
-use App\\Http\\Controllers\\Controller;
-use App\\Models\\Tenant\\LibraryBook;
-use App\\Models\\Tenant\\LibraryCategory;
-use App\\Models\\Tenant\\LibraryCopy;
-use App\\Models\\Tenant\\LibraryLoan;
-use App\\Models\\Tenant\\LibraryReservation;
-use App\\Models\\Tenant\\Student;
-use App\\Models\\Tenant\\Staff;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Facades\\Auth;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Validation\\Rule;
+use App\Http\Controllers\Controller;
+use App\Models\Tenant\LibraryBook;
+use App\Models\Tenant\LibraryCategory;
+use App\Models\Tenant\LibraryCopy;
+use App\Models\Tenant\LibraryLoan;
+use App\Models\Tenant\LibraryReservation;
+use App\Models\Tenant\Student;
+use App\Models\Tenant\Staff;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class LibraryController extends Controller
 {
@@ -79,7 +79,7 @@ class LibraryController extends Controller
             'accession_numbers' => ['required', 'string', 'max:8000'],
         ]);
 
-         $accessionNumbers = collect(preg_split('/\\r\\n|\\r|\\n/', $data['accession_numbers']))
+         $accessionNumbers = collect(preg_split('/\r\n|\r|\n/', $data['accession_numbers']))
             ->map(fn ($value) => trim($value))->filter()->values();
         if ($accessionNumbers->isEmpty() || $accessionNumbers->count() > 100 || $accessionNumbers->unique()->count() !== $accessionNumbers->count()) {
             return back()->withErrors(['accession_numbers' => 'Enter between 1 and 100 unique accession numbers, one per line.'])->withInput();
