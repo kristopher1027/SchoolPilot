@@ -33,6 +33,64 @@ class ParentPortalController extends Controller
             ->groupBy('student_id')
             ->map(fn ($records) => $records->take(5));
 
+        $invoices = DB::table('invoices as invoices')
+            ->join('academic_sessions', 'academic_sessions.id', '=', 'invoices.academic_session_id')
+            ->join('terms', 'terms.id', '=', 'invoices.term_id')
+            ->whereIn('invoices.student_id', $studentIds)
+            ->orderByDesc('academic_sessions.start_date')
+            ->orderByDesc('terms.start_date')
+            ->orderByDesc('invoices.id')
+            ->get([
+                'invoices.id',
+                'invoices.student_id',
+                'invoices.total_amount',
+                'invoices.amount_paid',
+                'invoices.balance',
+                'invoices.status',
+                'invoices.due_date',
+                'academic_sessions.name as session_name',
+                'terms.name as term_name',
+            ])
+            ->groupBy('student_id');
+
+        $invoiceIds = $invoices->flatten(1)->pluck('id');
+        $refundTotals = DB::table('payment_refunds')
+            ->select('payment_id')
+            ->selectRaw('SUM(amount) as refunded_amount')
+            ->whereIn('status', ['approved', 'settled'])
+            ->groupBy('payment_id');
+
+        $payments = DB::table('payments as payments')
+            ->join('invoices as invoices', 'invoices.id', '=', 'payments.invoice_id')
+            ->leftJoinSub($refundTotals, 'refund_totals', function ($join) {
+                $join->on('refund_totals.payment_id', '=', 'payments.id');
+            })
+            ->whereIn('payments.invoice_id', $invoiceIds)
+            ->orderByDesc('payments.paid_at')
+            ->get([
+                'payments.id',
+                'payments.invoice_id',
+                'payments.amount',
+                'payments.method',
+                'payments.receipt_no',
+                'payments.paid_at',
+                DB::raw('COALESCE(refund_totals.refunded_amount, 0) as refunded_amount'),
+            ])
+            ->groupBy('invoice_id');
+
+        $refunds = DB::table('payment_refunds')
+            ->join('payments', 'payments.id', '=', 'payment_refunds.payment_id')
+            ->whereIn('payments.invoice_id', $invoiceIds)
+            ->whereIn('payment_refunds.status', ['approved', 'settled'])
+            ->orderByDesc('payment_refunds.created_at')
+            ->get([
+                'payments.invoice_id',
+                'payment_refunds.amount',
+                'payment_refunds.status',
+                'payment_refunds.settled_at',
+            ])
+            ->groupBy('invoice_id');
+
         $publishedResults = DB::table('result_approvals as approvals')
             ->join('terms', 'terms.id', '=', 'approvals.term_id')
             ->join('academic_sessions', 'academic_sessions.id', '=', 'approvals.academic_session_id')
@@ -52,7 +110,10 @@ class ParentPortalController extends Controller
         return view('tenant.parent-portal.dashboard', compact(
             'guardian',
             'attendance',
-            'publishedResults'
+            'publishedResults',
+            'invoices',
+            'payments',
+            'refunds'
         ));
     }
 }
