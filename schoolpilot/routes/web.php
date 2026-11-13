@@ -13,6 +13,7 @@ use App\Http\Controllers\Tenant\TimetableController;
 use App\Http\Controllers\Tenant\AnnouncementController;
 use App\Http\Controllers\Tenant\FeeController;
 use App\Http\Controllers\Tenant\AdmissionController;
+use App\Http\Controllers\Tenant\LibraryController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Tenant\AcademicSession;
