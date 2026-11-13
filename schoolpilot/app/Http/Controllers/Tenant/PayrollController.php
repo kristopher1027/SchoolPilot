@@ -281,6 +281,11 @@ class PayrollController extends Controller
             $payroll = DB::table('payroll_periods')->where('id', $period)->lockForUpdate()->first();
             abort_unless($payroll, 404);
             abort_unless($payroll->status === 'approved', 422, 'Only approved payroll can be marked as paid.');
+            abort_unless(
+                $this->canMarkPayrollPaid($payroll, (int) $actor->id),
+                403,
+                'The person who approved this payroll cannot also mark it as paid. Another authorized manager must record the payment.'
+            );
             DB::table('payroll_periods')->where('id', $period)->update([
                 'status' => 'paid', 'paid_by' => $actor->id, 'paid_at' => now(),
                 'payment_reference' => $data['payment_reference'], 'updated_at' => now(),
@@ -328,6 +333,11 @@ class PayrollController extends Controller
     private function canApprovePayroll(object $payroll, int $actorId): bool
     {
         return $payroll->created_by === null || (int) $payroll->created_by !== $actorId;
+    }
+
+    private function canMarkPayrollPaid(object $payroll, int $actorId): bool
+    {
+        return $payroll->approved_by === null || (int) $payroll->approved_by !== $actorId;
     }
 
     private function payrollTotalsMatch(object $payroll, object $totals): bool
