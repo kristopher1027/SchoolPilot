@@ -66,11 +66,10 @@ class ParentPortalController extends Controller
             ->join('academic_sessions', 'academic_sessions.id', '=', 'timetable_entries.academic_session_id')
             ->join('terms', 'terms.id', '=', 'timetable_entries.term_id')
             ->whereIn('timetable_entries.class_id', $classIds)
-            ->orderByDesc('academic_sessions.start_date')
-            ->orderByDesc('terms.start_date')
+            ->where('academic_sessions.is_current', true)
+            ->where('terms.is_current', true)
             ->orderByRaw("CASE timetable_entries.day_of_week WHEN 'Monday' THEN 1 WHEN 'Tuesday' THEN 2 WHEN 'Wednesday' THEN 3 WHEN 'Thursday' THEN 4 WHEN 'Friday' THEN 5 WHEN 'Saturday' THEN 6 ELSE 7 END")
             ->orderBy('timetable_entries.start_time')
-            ->limit(150)
             ->get([
                 'timetable_entries.class_id',
                 'timetable_entries.day_of_week',
