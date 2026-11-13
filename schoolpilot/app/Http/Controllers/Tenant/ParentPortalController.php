@@ -45,7 +45,11 @@ class ParentPortalController extends Controller
             ->latest()
             ->limit(20)
             ->get();
-        $unreadNotificationCount = $notifications->whereNull('read_at')->count();
+        $unreadNotificationCount = DB::table('parent_notifications')
+            ->where('user_id', $user->id)
+            ->whereIn('student_id', $studentIds)
+            ->whereNull('read_at')
+            ->count();
         $attendance = AttendanceRecord::query()
             ->whereIn('student_id', $studentIds)
             ->orderByDesc('date')
