@@ -37,6 +37,13 @@
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal']))
                     <a href="/school/{{ request()->route('school') }}/hr/staff-attendance" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Staff Attendance</a>
                 @endif
+                @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'bursar']))
+                    <a href="/school/{{ request()->route('school') }}/payroll" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Payroll Management</a>
+                @endif
+                @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'vice_principal', 'dean', 'hod', 'class_teacher', 'subject_teacher', 'bursar']))
+                    <a href="/school/{{ request()->route('school') }}/payroll/payslips" class="block px-4 py-2 hover:bg-blue-800 rounded transition">My Payslips</a>
+                @endif
+
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'vice_principal', 'dean', 'hod', 'class_teacher', 'subject_teacher', 'bursar']))
                     <a href="/school/{{ request()->route('school') }}/hr/leave" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Leave Management</a>
                 @endif
