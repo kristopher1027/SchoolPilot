@@ -35,6 +35,13 @@
 
                 {{-- Only Admin and Principal can see Staff --}}
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal']))
+                    <a href="/school/{{ request()->route('school') }}/hr/staff-attendance" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Staff Attendance</a>
+                @endif
+                @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'vice_principal', 'dean', 'hod', 'class_teacher', 'subject_teacher', 'bursar']))
+                    <a href="/school/{{ request()->route('school') }}/hr/leave" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Leave Management</a>
+                @endif
+
+                @if(in_array(Auth::user()->role, ['school_admin', 'principal']))
                     <a href="/school/greenfield/staff" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Staff</a>
                     <a href="/school/greenfield/academic" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Classes & Subjects</a>
                     <a href="/school/greenfield/assignments" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Teacher Assignments</a>
