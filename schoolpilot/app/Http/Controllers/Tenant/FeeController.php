@@ -339,6 +339,15 @@ class FeeController extends Controller
     public function showInvoice(Invoice $invoice)
     {
         $invoice->load(['student.schoolClass', 'student.section', 'academicSession', 'term', 'items.feeItem', 'payments']);
+        $refunds = DB::table('payment_refunds')
+            ->whereIn('payment_id', $invoice->payments->pluck('id'))
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('payment_id');
+
+        foreach ($invoice->payments as $payment) {
+            $payment->refundRequests = $refunds->get($payment->id, collect());
+        }
 
         return view('tenant.fees.show-invoice', compact('invoice'));
     }
@@ -491,13 +500,18 @@ class FeeController extends Controller
                 ]);
             }
 
-            $amount = number_format((float) $record->amount, 2, '.', '');
+            $invoice = Invoice::whereKey($payment->invoice_id)->firstOrFail();
+            $newPaid = round((float) $invoice->amount_paid - (float) $record->amount, 2);
+            $newBalance = round((float) $invoice->balance + (float) $record->amount, 2);
+            $newStatus = $newPaid <= 0 ? 'unpaid' : ($newBalance > 0 ? 'partial' : 'paid');
+
             $updated = DB::table('invoices')
                 ->where('id', $payment->invoice_id)
                 ->where('amount_paid', '>=', (float) $record->amount)
-                ->decrement('amount_paid', (float) $record->amount, [
-                    'balance' => DB::raw("balance + {$amount}"),
-                    'status' => DB::raw("CASE WHEN amount_paid - {$amount} <= 0 THEN 'unpaid' ELSE 'partial' END"),
+                ->update([
+                    'amount_paid' => $newPaid,
+                    'balance' => $newBalance,
+                    'status' => $newStatus,
                     'updated_at' => now(),
                 ]);
             if ($updated !== 1) {
