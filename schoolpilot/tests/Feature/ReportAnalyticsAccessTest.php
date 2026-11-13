@@ -26,6 +26,7 @@ class ReportAnalyticsAccessTest extends TestCase
         $visible = $method->invoke($controller, [
             'finance' => ['collected' => 2500],
             'enrollment' => ['total' => 20],
+            'admissions' => ['total' => 5],
             'attendance' => ['present' => 18],
             'academics' => ['average_score' => 70],
             'staff' => ['total' => 4],
