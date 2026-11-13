@@ -8,6 +8,17 @@ use Tests\TestCase;
 
 class PayrollCalculationTest extends TestCase
 {
+    public function test_percentage_component_overrides_cannot_exceed_one_hundred_percent(): void
+    {
+        $controller = new PayrollController();
+        $method = new ReflectionMethod($controller, 'isValidComponentValue');
+        $method->setAccessible(true);
+
+        $this->assertTrue($method->invoke($controller, 'percentage', 100.0));
+        $this->assertFalse($method->invoke($controller, 'percentage', 100.01));
+        $this->assertTrue($method->invoke($controller, 'fixed', 250000.0));
+    }
+
     public function test_fixed_salary_component_returns_the_configured_amount(): void
     {
         $controller = new PayrollController();
