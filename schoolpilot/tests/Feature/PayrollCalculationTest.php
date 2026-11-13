@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Tenant\PayrollController;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class PayrollCalculationTest extends TestCase
