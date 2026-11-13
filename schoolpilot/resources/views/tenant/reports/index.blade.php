@@ -23,13 +23,18 @@
     <section>
         <h2 class="mb-3 text-lg font-semibold text-gray-900">Enrollment & admissions</h2>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            @foreach([['Total students',$data['enrollment']['total']],['Active students',$data['enrollment']['active']],['Admissions received',$data['admissions']['total']],['Accepted applications',$data['admissions']['accepted']]] as [$label,$value])
+            @foreach([['Total students',$data['enrollment']['total']],['Active students',$data['enrollment']['active']]] as [$label,$value])
                 <div class="rounded-xl bg-white p-4 shadow"><p class="text-sm text-gray-500">{{ $label }}</p><p class="mt-2 text-2xl font-bold text-gray-900">{{ number_format($value) }}</p></div>
             @endforeach
+            @if($role === 'dean' || in_array($role, ['school_admin','principal','vice_principal'], true))
+                @foreach([['Admissions received',$data['admissions']['total']],['Accepted applications',$data['admissions']['accepted']]] as [$label,$value])<div class="rounded-xl bg-white p-4 shadow"><p class="text-sm text-gray-500">{{ $label }}</p><p class="mt-2 text-2xl font-bold text-gray-900">{{ number_format($value) }}</p></div>@endforeach
+            @endif
         </div>
         <div class="mt-3 grid gap-3 md:grid-cols-2">
             <div class="rounded-xl bg-white p-4 shadow"><h3 class="font-semibold">Student status</h3><div class="mt-3 grid grid-cols-2 gap-3 text-sm">@foreach(['active','graduated','transferred','withdrawn'] as $status)<div class="flex justify-between border-b py-2"><span class="capitalize text-gray-600">{{ $status }}</span><strong>{{ number_format($data['enrollment'][$status]) }}</strong></div>@endforeach</div></div>
+            @if($role === 'dean' || in_array($role, ['school_admin','principal','vice_principal'], true))
             <div class="rounded-xl bg-white p-4 shadow"><h3 class="font-semibold">Admission pipeline</h3><div class="mt-3 grid grid-cols-2 gap-3 text-sm">@foreach(['submitted','under_review','accepted','waitlisted','rejected','converted'] as $status)<div class="flex justify-between border-b py-2"><span class="capitalize text-gray-600">{{ str_replace('_',' ',$status) }}</span><strong>{{ number_format($data['admissions'][$status]) }}</strong></div>@endforeach</div></div>
+            @endif
         </div>
         <div class="mt-3 rounded-xl bg-white p-4 shadow"><h3 class="font-semibold">Student strength by class</h3><div class="mt-3 overflow-x-auto"><table class="w-full text-left text-sm"><thead class="text-gray-500"><tr><th class="py-2">Class</th><th class="py-2 text-right">Students</th></tr></thead><tbody>@forelse($data['enrollment']['by_class'] as $row)<tr class="border-t"><td class="py-2">{{ $row->class_name }}</td><td class="py-2 text-right font-semibold">{{ number_format($row->student_count) }}</td></tr>@empty<tr><td colspan="2" class="py-3 text-gray-500">No enrollment records.</td></tr>@endforelse</tbody></table></div></div>
     </section>
