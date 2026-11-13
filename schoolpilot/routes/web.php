@@ -16,6 +16,7 @@ use App\Http\Controllers\Tenant\AdmissionController;
 use App\Http\Controllers\Tenant\LibraryController;
 use App\Http\Controllers\Tenant\InventoryController;
 use App\Http\Controllers\Tenant\TransportController;
+use App\Http\Controllers\Tenant\ReportController;
 use App\Http\Controllers\Tenant\SchoolWebsiteController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
@@ -195,6 +196,11 @@ Route::prefix('school/{school}')->group(function () {
                 Route::post('/website/club-members', [SchoolWebsiteController::class, 'storeClubMember']);
                 Route::post('/website/clubs/{club}/members/{member}/end', [SchoolWebsiteController::class, 'endClubMember'])->whereNumber('club')->whereNumber('member');
                 Route::post('/website/registrations/{registration}', [SchoolWebsiteController::class, 'updateRegistration'])->whereNumber('registration');
+            });
+
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal,vice_principal,dean,hod,bursar')->group(function () {
+                Route::get('/reports', [ReportController::class, 'index']);
+                Route::get('/reports/export', [ReportController::class, 'export']);
             });
 
             Route::get('/announcements', [AnnouncementController::class, 'index']);
