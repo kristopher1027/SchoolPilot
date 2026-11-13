@@ -117,7 +117,7 @@ class LibraryController extends Controller
             return back()->withErrors(['member_id' => 'Select an active student or valid staff member.'])->withInput();
         }
 
-        DB::transaction(function () use ($data) {
+        DB::transaction(function () use ($data, $memberType, $memberId) {
             $copy = LibraryCopy::whereKey($data['copy_id'])->lockForUpdate()->firstOrFail();
             abort_unless($copy->status === 'available', 422, 'This copy is not currently available.');
 
@@ -192,13 +192,13 @@ class LibraryController extends Controller
     {
         $data = $request->validate([
             'book_id' => ['required', 'integer', 'exists:library_books,id'],
-            'member_type' => ['required', Rule::in(['student', 'staff'])],
-            'member_id' => ['required', 'integer'],
+            'member' => ['required', 'regex:/^(student|staff):[0-9]+$/],
         ]);
 
-        $memberExists = $data['member_type'] === 'student'
-            ? Student::whereKey($data['member_id'])->where('status', 'active')->exists()
-            : Staff::whereKey($data['member_id'])->exists();
+        [$memberType, $memberId] = explode(':', $data['member']);
+        $memberExists = $memberType === 'student'
+            ? Student::whereKey($memberId)->where('status', 'active')->exists()
+            : Staff::whereKey($memberId)->exists();
 
         if (! $memberExists) {
             return back()->withErrors(['member_id' => 'Select a valid library member.'])->withInput();
