@@ -97,7 +97,7 @@ return [
         ],
         
         'sqlite' => [
-            'path' => database_path('tenants'),
+            'path' => env('SCHOOLPILOT_TENANT_DATABASE_PATH', database_path('tenants')),
         ],
     ],
 
