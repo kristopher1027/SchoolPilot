@@ -99,4 +99,22 @@
         </tbody>
     </table></div>
 </section>
+
+<section class="mt-6 rounded-lg bg-white p-5 shadow">
+    <h4 class="mb-3 font-bold">Reserve a book</h4>
+    <form method="POST" action="{{ url('/school/' . request()->route('school') . '/library/reservations') }}" class="grid grid-cols-1 gap-3 md:grid-cols-3">
+        @csrf
+        <select name="book_id" required class="rounded border-gray-300"><option value="">Select book</option>@foreach($books as $book)<option value="{{ $book->id }}">{{ $book->title }}</option>@endforeach</select>
+        <select name="member" required class="rounded border-gray-300"><option value="">Select member</option><optgroup label="Students">@foreach($students as $student)<option value="student:{{ $student->id }}">{{ $student->admission_no }} — {{ $student->first_name }} {{ $student->last_name }}</option>@endforeach</optgroup><optgroup label="Staff">@foreach($staff as $person)<option value="staff:{{ $person->id }}">{{ $person->user?->name ?? 'Staff #' . $person->id }}</option>@endforeach</optgroup></select>
+        <button class="rounded bg-indigo-700 px-4 py-2 font-semibold text-white">Create reservation</button>
+    </form>
+</section>
+<section class="mt-6 rounded-lg bg-white p-5 shadow">
+    <h4 class="mb-4 font-bold">Recent borrowing history</h4>
+    <div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500"><tr><th class="px-3 py-3">Book / Copy</th><th class="px-3 py-3">Issued</th><th class="px-3 py-3">Due</th><th class="px-3 py-3">Returned</th><th class="px-3 py-3">Fine balance</th></tr></thead>
+        <tbody class="divide-y divide-gray-100">@forelse($recentLoans as $loan)<tr><td class="px-3 py-3">{{ $loan->copy?->book?->title }} — {{ $loan->copy?->accession_no }}</td><td class="px-3 py-3">{{ $loan->issued_at->format('d M Y') }}</td><td class="px-3 py-3">{{ $loan->due_at->format('d M Y') }}</td><td class="px-3 py-3">{{ $loan->returned_at?->format('d M Y') ?? 'Not returned' }}</td><td class="px-3 py-3">{{ number_format((float) $loan->fine_amount - (float) $loan->fine_paid, 2) }}</td></tr>@empty<tr><td colspan="5" class="px-3 py-6 text-center text-gray-500">No borrowing history yet.</td></tr>@endforelse</tbody>
+    </table></div>
+</section>
+
 @endsection
