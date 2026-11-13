@@ -39,6 +39,13 @@ class ParentPortalController extends Controller
             ->pluck('read_at', 'announcement_id');
 
         $studentIds = $guardian->students->pluck('id');
+        $notifications = DB::table('parent_notifications')
+            ->where('user_id', $user->id)
+            ->whereIn('student_id', $studentIds)
+            ->latest()
+            ->limit(20)
+            ->get();
+        $unreadNotificationCount = $notifications->whereNull('read_at')->count();
         $attendance = AttendanceRecord::query()
             ->whereIn('student_id', $studentIds)
             ->orderByDesc('date')
@@ -129,7 +136,9 @@ class ParentPortalController extends Controller
             'payments',
             'refunds',
             'announcements',
-            'announcementReads'
+            'announcementReads',
+            'notifications',
+            'unreadNotificationCount'
         ));
     }
 
@@ -154,4 +163,29 @@ class ParentPortalController extends Controller
         return redirect('/school/' . $request->route('school') . '/parent-portal')
             ->with('success', 'Announcement marked as read.');
     }
+    public function markNotificationRead(Request $request, int $notification)
+    {
+        $user = Auth::guard('school')->user();
+        abort_unless($user && $user->role === 'parent', 403);
+
+        $guardian = Guardian::where('user_id', $user->id)->firstOrFail();
+        $studentIds = $guardian->students()->pluck('students.id');
+
+        $updated = DB::table('parent_notifications')
+            ->where('id', $notification)
+            ->where('user_id', $user->id)
+            ->whereIn('student_id', $studentIds)
+            ->whereNull('read_at')
+            ->update(['read_at' => now(), 'updated_at' => now()]);
+
+        abort_unless($updated === 1 || DB::table('parent_notifications')
+            ->where('id', $notification)
+            ->where('user_id', $user->id)
+            ->whereIn('student_id', $studentIds)
+            ->exists(), 404);
+
+        return redirect('/school/' . $request->route('school') . '/parent-portal')
+            ->with('success', 'Notification marked as read.');
+    }
+
 }
