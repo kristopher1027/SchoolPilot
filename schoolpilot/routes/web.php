@@ -16,6 +16,7 @@ use App\Http\Controllers\Tenant\AdmissionController;
 use App\Http\Controllers\Tenant\LibraryController;
 use App\Http\Controllers\Tenant\InventoryController;
 use App\Http\Controllers\Tenant\TransportController;
+use App\Http\Controllers\Tenant\SchoolWebsiteController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Tenant\AcademicSession;
@@ -152,6 +153,15 @@ Route::prefix('school/{school}')->group(function () {
         Route::get('/admissions/apply', [AdmissionController::class, 'apply']);
         Route::post('/admissions/apply', [AdmissionController::class, 'submitApplication'])->middleware('throttle:5,1');
 
+        // Public tenant website: all content is resolved from this school's database.
+        Route::get('/website', [SchoolWebsiteController::class, 'publicHome']);
+        Route::get('/website/pages/{slug}', [SchoolWebsiteController::class, 'publicPage']);
+        Route::get('/website/news', [SchoolWebsiteController::class, 'publicNews']);
+        Route::get('/website/news/{slug}', [SchoolWebsiteController::class, 'publicPost']);
+        Route::get('/website/events', [SchoolWebsiteController::class, 'publicEvents']);
+        Route::get('/website/events/{slug}', [SchoolWebsiteController::class, 'publicEvent'])->where('slug', '[A-Za-z0-9-]+');
+        Route::post('/website/events/{event}/register', [SchoolWebsiteController::class, 'registerForEvent'])->whereNumber('event')->middleware('throttle:5,1');
+
         // Keep old school-specific login bookmarks working after the universal login change.
         Route::get('/login', fn () => redirect('/login'));
 
@@ -166,6 +176,24 @@ Route::prefix('school/{school}')->group(function () {
         });
 
         Route::middleware(['auth:school', EnsureActiveUser::class])->group(function () {
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
+                Route::get('/website/manage', [SchoolWebsiteController::class, 'adminIndex']);
+                Route::post('/website/settings', [SchoolWebsiteController::class, 'saveSettings']);
+                Route::post('/website/pages', [SchoolWebsiteController::class, 'storePage']);
+                Route::post('/website/pages/{page}/status', [SchoolWebsiteController::class, 'updatePageStatus'])->whereNumber('page');
+                Route::post('/website/news', [SchoolWebsiteController::class, 'storePost']);
+                Route::post('/website/news/{post}/status', [SchoolWebsiteController::class, 'updatePostStatus'])->whereNumber('post');
+                Route::post('/website/events', [SchoolWebsiteController::class, 'storeEvent']);
+                Route::post('/website/events/{event}/status', [SchoolWebsiteController::class, 'updateEvent'])->whereNumber('event');
+                Route::post('/website/clubs', [SchoolWebsiteController::class, 'storeClub']);
+                Route::post('/website/club-members', function (Request $request, string $school, SchoolWebsiteController $controller) {
+                    $data = $request->validate(['club_id' => ['required', 'integer', 'exists:school_clubs,id']]);
+                    return $controller->addClubMember($request, (int) $data['club_id']);
+                });
+                Route::post('/website/clubs/{club}/members/{member}/end', [SchoolWebsiteController::class, 'endClubMember'])->whereNumber('club')->whereNumber('member');
+                Route::post('/website/registrations/{registration}', [SchoolWebsiteController::class, 'updateRegistration'])->whereNumber('registration');
+            });
+
             Route::get('/announcements', [AnnouncementController::class, 'index']);
             Route::get('/announcements/{announcement}', [AnnouncementController::class, 'show'])->whereNumber('announcement');
             Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
