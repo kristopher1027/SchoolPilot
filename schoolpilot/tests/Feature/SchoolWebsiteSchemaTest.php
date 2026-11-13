@@ -38,6 +38,21 @@ class SchoolWebsiteSchemaTest extends TestCase
             $this->assertTrue(Schema::connection('tenant_sqlite')->hasTable($table), "Missing table: {$table}");
         }
 
+        $userId = DB::table('users')->insertGetId([]);
+        $eventId = DB::table('school_events')->insertGetId([
+            'title' => 'Open Day', 'slug' => 'open-day', 'description' => 'School open day',
+            'starts_at' => now()->addDays(5), 'registration_open' => true, 'status' => 'published',
+            'created_by' => $userId, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        foreach (['cancelled', 'registered'] as $status) {
+            DB::table('school_event_registrations')->insert([
+                'event_id' => $eventId, 'attendee_name' => 'Test Parent', 'email' => 'parent@example.test',
+                'attendee_type' => 'parent', 'status' => $status, 'attendance_status' => 'not_marked',
+                'registered_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+        $this->assertSame(2, DB::table('school_event_registrations')->where('event_id', $eventId)->count());
+
         $migration->down();
 
         $this->assertFalse(Schema::connection('tenant_sqlite')->hasTable('school_website_settings'));
