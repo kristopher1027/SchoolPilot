@@ -15,6 +15,37 @@ class SendOverdueInvoiceReminders extends Command
 
     protected $description = 'Email primary guardians about overdue school invoices across active tenants';
 
+
+    /**
+     * Atomically claim one reminder so overlapping scheduler processes cannot
+     * send the same invoice notice concurrently. Recover abandoned claims after
+     * 30 minutes so a crashed worker does not block delivery indefinitely.
+     */
+    private function claimReminder(\\Illuminate\\Database\\Query\\Builder $log, int $invoiceId, string $today, string $email): bool
+    {
+        $base = $log->where('invoice_id', $invoiceId)
+            ->where('reminder_date', $today)
+            ->where('recipient_email', $email);
+
+        $base->where('status', 'sending')
+            ->where('updated_at', '<', now()->subMinutes(30))
+            ->update([
+                'status' => 'failed',
+                'failure_reason' => 'Previous delivery attempt did not finish; retrying.',
+                'updated_at' => now(),
+            ]);
+
+        return $log->where('invoice_id', $invoiceId)
+            ->where('reminder_date', $today)
+            ->where('recipient_email', $email)
+            ->whereIn('status', ['pending', 'failed'])
+            ->update([
+                'status' => 'sending',
+                'failure_reason' => null,
+                'updated_at' => now(),
+            ]) === 1;
+    }
+
     public function handle(): int
     {
         if (! $this->option('dry-run') && in_array(config('mail.default'), ['log', 'array'], true)) {
@@ -84,12 +115,7 @@ class SendOverdueInvoiceReminders extends Command
                         'updated_at' => now(),
                     ]);
 
-                    $record = $log->where('invoice_id', $reminder->invoice_id)
-                        ->where('reminder_date', $today)
-                        ->where('recipient_email', $reminder->recipient_email)
-                        ->first();
-
-                    if ($record?->status === 'sent') {
+                    if (! $this->claimReminder($log, (int) $reminder->invoice_id, $today, $reminder->recipient_email)) {
                         continue;
                     }
 
