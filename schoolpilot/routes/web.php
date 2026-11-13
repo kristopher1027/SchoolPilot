@@ -327,7 +327,13 @@ Route::prefix('school/{school}')->group(function () {
                 Route::post('/fees/invoices', [FeeController::class, 'storeInvoice']);
                 Route::get('/fees/invoices/{invoice}', [FeeController::class, 'showInvoice'])->whereNumber('invoice');
                 Route::post('/fees/invoices/{invoice}/payments', [FeeController::class, 'storePayment'])->whereNumber('invoice');
+                Route::post('/fees/payments/{payment}/refunds', [FeeController::class, 'requestRefund'])->whereNumber('payment');
                 Route::get('/fees/receipts/{payment}', [FeeController::class, 'receipt'])->whereNumber('payment');
+            });
+
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
+                Route::post('/fees/refunds/{refund}/approve', [FeeController::class, 'approveRefund'])->whereNumber('refund');
+                Route::post('/fees/refunds/{refund}/reject', [FeeController::class, 'rejectRefund'])->whereNumber('refund');
             });
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar,librarian')->group(function () {

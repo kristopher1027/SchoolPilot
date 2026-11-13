@@ -43,11 +43,11 @@ class FeeController extends Controller
         $paymentsQuery = $this->reconciliationQuery($filters);
         $summary = [
             'count' => (clone $paymentsQuery)->count(),
-            'collected' => round((float) (clone $paymentsQuery)->sum('p.amount'), 2),
+            'collected' => round((float) (clone $paymentsQuery)->sum(DB::raw('p.amount - COALESCE(refund_totals.refunded_amount, 0)')), 2),
         ];
         $byMethod = (clone $paymentsQuery)
             ->select('p.method')
-            ->selectRaw('COUNT(p.id) as payment_count, SUM(p.amount) as amount_total')
+            ->selectRaw('COUNT(p.id) as payment_count, SUM(p.amount - COALESCE(refund_totals.refunded_amount, 0)) as amount_total')
             ->groupBy('p.method')
             ->orderBy('p.method')
             ->get();
@@ -56,6 +56,7 @@ class FeeController extends Controller
                 'p.id', 'p.amount', 'p.method', 'p.reference', 'p.receipt_no', 'p.paid_at',
                 'i.id as invoice_id', 's.admission_no', 's.first_name', 's.last_name',
             ])
+            ->selectRaw('COALESCE(refund_totals.refunded_amount, 0) as refunded_amount, p.amount - COALESCE(refund_totals.refunded_amount, 0) as net_amount')
             ->orderByDesc('p.paid_at')
             ->orderByDesc('p.id')
             ->paginate(25)
@@ -75,6 +76,7 @@ class FeeController extends Controller
                 's.admission_no', 's.first_name', 's.last_name', 'i.id as invoice_id',
                 'a.name as session_name', 't.name as term_name',
             ])
+            ->selectRaw('COALESCE(refund_totals.refunded_amount, 0) as refunded_amount, p.amount - COALESCE(refund_totals.refunded_amount, 0) as net_amount')
             ->orderBy('p.paid_at')
             ->orderBy('p.id')
             ->get();
@@ -84,7 +86,7 @@ class FeeController extends Controller
 
         return response()->streamDownload(function () use ($payments) {
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Paid at', 'Receipt number', 'Payment reference', 'Method', 'Amount (NGN)', 'Admission number', 'Student', 'Invoice ID', 'Academic session', 'Term']);
+            fputcsv($output, ['Paid at', 'Receipt number', 'Payment reference', 'Method', 'Gross amount (NGN)', 'Refunded amount (NGN)', 'Net collected (NGN)', 'Admission number', 'Student', 'Invoice ID', 'Academic session', 'Term']);
             foreach ($payments as $payment) {
                 $values = [
                     $payment->paid_at,
@@ -92,6 +94,8 @@ class FeeController extends Controller
                     $payment->reference,
                     $payment->method,
                     $payment->amount,
+                    $payment->refunded_amount,
+                    $payment->net_amount,
                     $payment->admission_no,
                     trim($payment->first_name . ' ' . $payment->last_name),
                     $payment->invoice_id,
@@ -117,7 +121,16 @@ class FeeController extends Controller
 
     private function reconciliationQuery(array $filters)
     {
+        $approvedRefundTotals = DB::table('payment_refunds')
+            ->select('payment_id')
+            ->selectRaw('SUM(amount) as refunded_amount')
+            ->where('status', 'approved')
+            ->groupBy('payment_id');
+
         return DB::table('payments as p')
+            ->leftJoinSub($approvedRefundTotals, 'refund_totals', function ($join) {
+                $join->on('refund_totals.payment_id', '=', 'p.id');
+            })
             ->join('invoices as i', 'i.id', '=', 'p.invoice_id')
             ->join('students as s', 's.id', '=', 'i.student_id')
             ->when($filters['from'], fn ($query) => $query->whereDate('p.paid_at', '>=', $filters['from']))
@@ -339,6 +352,15 @@ class FeeController extends Controller
     public function showInvoice(Invoice $invoice)
     {
         $invoice->load(['student.schoolClass', 'student.section', 'academicSession', 'term', 'items.feeItem', 'payments']);
+        $refunds = DB::table('payment_refunds')
+            ->whereIn('payment_id', $invoice->payments->pluck('id'))
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('payment_id');
+
+        foreach ($invoice->payments as $payment) {
+            $payment->refundRequests = $refunds->get($payment->id, collect());
+        }
 
         return view('tenant.fees.show-invoice', compact('invoice'));
     }
@@ -396,11 +418,196 @@ class FeeController extends Controller
             ->with('success', 'Payment recorded. Receipt generated.');
     }
 
+    public function requestRefund(Request $request, Payment $payment)
+    {
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999'],
+            'reason' => ['required', 'string', 'min:8', 'max:1000'],
+            'reference' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $refund = DB::transaction(function () use ($data, $payment) {
+            $recorded = Payment::whereKey($payment->id)->firstOrFail();
+            $approvedRefunds = (float) DB::table('payment_refunds')
+                ->where('payment_id', $recorded->id)
+                ->where('status', 'approved')
+                ->sum('amount');
+            $pendingRefunds = (float) DB::table('payment_refunds')
+                ->where('payment_id', $recorded->id)
+                ->where('status', 'pending')
+                ->sum('amount');
+            $available = $this->refundableAmount((float) $recorded->amount, $approvedRefunds, $pendingRefunds);
+            $amount = round((float) $data['amount'], 2);
+
+            if ($amount > $available) {
+                throw ValidationException::withMessages([
+                    'amount' => 'The refund exceeds the payment amount remaining after pending and approved refunds.',
+                ]);
+            }
+
+            $id = DB::table('payment_refunds')->insertGetId([
+                'payment_id' => $recorded->id,
+                'amount' => $amount,
+                'reason' => $data['reason'],
+                'reference' => $data['reference'] ?? null,
+                'status' => 'pending',
+                'requested_by' => Auth::guard('school')->id(),
+                'reviewed_by' => null,
+                'reviewed_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $this->audit('payment.refund_requested', 'payment_refund', $id, null, [
+                'payment_id' => $recorded->id,
+                'amount' => $amount,
+                'reason' => $data['reason'],
+            ]);
+
+            return DB::table('payment_refunds')->find($id);
+        });
+
+        return redirect($this->schoolPath($request, '/fees/invoices/' . $payment->invoice_id))
+            ->with('success', 'Refund request submitted for independent approval.');
+    }
+
+    public function approveRefund(Request $request, int $refund)
+    {
+        $approved = DB::transaction(function () use ($refund) {
+            $record = DB::table('payment_refunds')->where('id', $refund)->first();
+
+            if (! $record || $record->status !== 'pending') {
+                throw ValidationException::withMessages([
+                    'refund' => 'This refund request is no longer pending.',
+                ]);
+            }
+
+            $actorId = (int) Auth::guard('school')->id();
+            if (! $this->canReviewRefund((int) $record->requested_by, $actorId)) {
+                abort(403, 'The person who requested a refund cannot approve it. Another authorized manager must review it.');
+            }
+
+            $payment = Payment::findOrFail($record->payment_id);
+            $approvedTotal = (float) DB::table('payment_refunds')
+                ->where('payment_id', $payment->id)
+                ->where('status', 'approved')
+                ->sum('amount');
+            if (round($approvedTotal + (float) $record->amount, 2) > round((float) $payment->amount, 2)) {
+                throw ValidationException::withMessages([
+                    'refund' => 'The approved refund total would exceed the original payment amount.',
+                ]);
+            }
+
+            $changed = DB::table('payment_refunds')
+                ->where('id', $record->id)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'approved',
+                    'reviewed_by' => $actorId,
+                    'reviewed_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            if ($changed !== 1) {
+                throw ValidationException::withMessages([
+                    'refund' => 'This refund request has already been reviewed.',
+                ]);
+            }
+
+            $invoice = Invoice::whereKey($payment->invoice_id)->firstOrFail();
+            $newPaid = round((float) $invoice->amount_paid - (float) $record->amount, 2);
+            $newBalance = round((float) $invoice->balance + (float) $record->amount, 2);
+            $newStatus = $newPaid <= 0 ? 'unpaid' : ($newBalance > 0 ? 'partial' : 'paid');
+
+            $updated = DB::table('invoices')
+                ->where('id', $payment->invoice_id)
+                ->where('amount_paid', '>=', (float) $record->amount)
+                ->update([
+                    'amount_paid' => $newPaid,
+                    'balance' => $newBalance,
+                    'status' => $newStatus,
+                    'updated_at' => now(),
+                ]);
+            if ($updated !== 1) {
+                throw ValidationException::withMessages([
+                    'refund' => 'The invoice payment totals have changed. Review the invoice before approving this refund.',
+                ]);
+            }
+
+            $this->audit('payment.refund_approved', 'payment_refund', (int) $record->id, [
+                'status' => 'pending',
+            ], [
+                'status' => 'approved',
+                'payment_id' => $payment->id,
+                'amount' => (float) $record->amount,
+                'reviewed_by' => $actorId,
+            ]);
+
+            return $payment;
+        });
+
+        return redirect($this->schoolPath($request, '/fees/invoices/' . $approved->invoice_id))
+            ->with('success', 'Refund approved and invoice balance updated.');
+    }
+
+    public function rejectRefund(Request $request, int $refund)
+    {
+        $record = DB::table('payment_refunds')->where('id', $refund)->first();
+        if (! $record || $record->status !== 'pending') {
+            throw ValidationException::withMessages([
+                'refund' => 'This refund request is no longer pending.',
+            ]);
+        }
+
+        $actorId = (int) Auth::guard('school')->id();
+        if (! $this->canReviewRefund((int) $record->requested_by, $actorId)) {
+            abort(403, 'The person who requested a refund cannot reject their own request.');
+        }
+
+        $changed = DB::table('payment_refunds')
+            ->where('id', $record->id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'rejected',
+                'reviewed_by' => $actorId,
+                'reviewed_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        if ($changed !== 1) {
+            throw ValidationException::withMessages([
+                'refund' => 'This refund request has already been reviewed.',
+            ]);
+        }
+
+        $this->audit('payment.refund_rejected', 'payment_refund', (int) $record->id, [
+            'status' => 'pending',
+        ], [
+            'status' => 'rejected',
+            'payment_id' => $record->payment_id,
+            'reviewed_by' => $actorId,
+        ]);
+
+        $payment = Payment::findOrFail($record->payment_id);
+
+        return redirect($this->schoolPath($request, '/fees/invoices/' . $payment->invoice_id))
+            ->with('success', 'Refund request rejected.');
+    }
+
     public function receipt(Payment $payment)
     {
         $payment->load(['invoice.student', 'invoice.academicSession', 'invoice.term']);
 
         return view('tenant.fees.receipt', compact('payment'));
+    }
+
+    private function refundableAmount(float $paymentAmount, float $approvedRefunds, float $pendingRefunds): float
+    {
+        return max(0, round($paymentAmount - $approvedRefunds - $pendingRefunds, 2));
+    }
+
+    private function canReviewRefund(int $requesterId, int $actorId): bool
+    {
+        return $requesterId !== $actorId;
     }
 
     private function receiptNumber(): string
