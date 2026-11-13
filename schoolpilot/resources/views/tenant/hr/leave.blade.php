@@ -37,8 +37,8 @@
                 @csrf
                 <label class="text-sm font-medium text-gray-700">Leave name<input required name="name" maxlength="100" class="mt-1 block w-full rounded-lg border-gray-300 text-sm" placeholder="Annual leave"></label>
                 <label class="text-sm font-medium text-gray-700">Annual days<input required type="number" min="0" max="365" name="annual_days" value="0" class="mt-1 block w-full rounded-lg border-gray-300 text-sm"></label>
-                <label class="flex items-center gap-2 pt-6 text-sm text-gray-700"><input type="checkbox" name="is_paid" value="1" checked> Paid leave</label>
-                <label class="flex items-center gap-2 pt-6 text-sm text-gray-700"><input type="checkbox" name="requires_approval" value="1" checked> Requires approval</label>
+                <label class="flex items-center gap-2 pt-6 text-sm text-gray-700"><input type="hidden" name="is_paid" value="0"><input type="checkbox" name="is_paid" value="1" checked> Paid leave</label>
+                <label class="flex items-center gap-2 pt-6 text-sm text-gray-700"><input type="hidden" name="requires_approval" value="0"><input type="checkbox" name="requires_approval" value="1" checked> Requires approval</label>
                 <div class="sm:col-span-2 lg:col-span-4"><button class="rounded-lg bg-blue-800 px-4 py-2 text-sm font-semibold text-white">Add leave type</button></div>
             </form>
             <p class="mt-2 text-xs text-gray-500">Leave types are tenant-specific. Unpaid leave is not deducted from the paid leave allowance.</p>
