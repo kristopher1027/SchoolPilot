@@ -19,6 +19,7 @@
         <div class="flex items-center gap-2 lg:col-span-5"><button class="rounded-lg bg-blue-800 px-4 py-2 text-sm font-semibold text-white">Apply filters</button><a href="{{ url('/school/'.request()->route('school').'/reports') }}" class="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-700">Clear</a><span class="text-xs text-gray-500">Date filters apply to dated records; session, term and class filters apply where relevant.</span></div>
     </form>
 
+    @if($role !== 'bursar')
     <section>
         <h2 class="mb-3 text-lg font-semibold text-gray-900">Enrollment & admissions</h2>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -47,6 +48,9 @@
         <div class="mt-3 rounded-xl bg-white p-4 shadow"><h3 class="font-semibold">Academic performance by class</h3><div class="mt-3 overflow-x-auto"><table class="w-full text-left text-sm"><thead class="text-gray-500"><tr><th class="py-2">Class</th><th class="py-2 text-right">Score entries</th><th class="py-2 text-right">Average score</th></tr></thead><tbody>@forelse($data['academics']['by_class'] as $row)<tr class="border-t"><td class="py-2">{{ $row->class_name }}</td><td class="py-2 text-right">{{ number_format($row->score_entries) }}</td><td class="py-2 text-right font-semibold">{{ number_format($row->average_score,2) }}</td></tr>@empty<tr><td colspan="3" class="py-3 text-gray-500">No score entries for these filters.</td></tr>@endforelse</tbody></table></div></div>
     </section>
 
+    @endif
+
+    @if(in_array($role, ['school_admin','principal','vice_principal','bursar'], true))
     <section>
         <h2 class="mb-3 text-lg font-semibold text-gray-900">Finance</h2>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -56,6 +60,9 @@
         </div>
     </section>
 
+    @endif
+
+    @if(in_array($role, ['school_admin','principal','vice_principal'], true))
     <section>
         <h2 class="mb-3 text-lg font-semibold text-gray-900">Staff & operations</h2>
         <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -65,5 +72,6 @@
         </div>
         <p class="mt-3 text-xs text-gray-500">Operational figures reflect current records. Date, session, term and class filters do not apply to every operational count.</p>
     </section>
+    @endif
 </div>
 @endsection
