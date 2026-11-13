@@ -45,10 +45,11 @@ class GuardianController extends Controller
                 'name' => $data['name'],
                 'email' => strtolower($data['email']),
                 'phone' => $data['phone'] ?? null,
-                'password' => Str::random(64),
+                'password' => ! empty($data['portal_password'])
+                    ? Hash::make($data['portal_password'])
+                    : Str::random(64),
                 'role' => 'parent',
-                // Parent portal access is enabled in a later milestone.
-                'is_active' => false,
+                'is_active' => ! empty($data['portal_password']),
             ]);
 
             return Guardian::create([
