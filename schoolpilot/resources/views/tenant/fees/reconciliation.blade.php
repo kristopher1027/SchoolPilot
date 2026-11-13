@@ -3,7 +3,7 @@
 <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
     <div>
         <h3 class="text-2xl font-bold text-gray-800">Payment Reconciliation</h3>
-        <p class="text-sm text-gray-500">Review recorded fee payments by date and payment method.</p>
+        <p class="text-sm text-gray-500">Review gross payments, approved refunds, and net collections by date and payment method.</p>
     </div>
     <div class="flex flex-wrap gap-2">
         <a class="rounded border px-4 py-2" href="{{ url('/school/' . request()->route('school') . '/fees') }}">Back to Fees</a>
@@ -41,7 +41,7 @@
         <p class="mt-1 text-2xl font-bold text-gray-800">{{ number_format($summary['count']) }}</p>
     </div>
     <div class="rounded-lg bg-white p-5 shadow">
-        <p class="text-sm text-gray-500">Total collected in selected period</p>
+        <p class="text-sm text-gray-500">Net collected after approved refunds</p>
         <p class="mt-1 text-2xl font-bold text-gray-800">₦{{ number_format($summary['collected'], 2) }}</p>
     </div>
 </div>
@@ -73,7 +73,7 @@
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50 text-left text-xs uppercase text-gray-500">
-                <tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">Student</th><th class="px-4 py-3">Receipt</th><th class="px-4 py-3">Reference</th><th class="px-4 py-3">Method</th><th class="px-4 py-3">Amount</th><th class="px-4 py-3"></th></tr>
+                <tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">Student</th><th class="px-4 py-3">Receipt</th><th class="px-4 py-3">Reference</th><th class="px-4 py-3">Method</th><th class="px-4 py-3">Gross</th><th class="px-4 py-3">Refunded</th><th class="px-4 py-3">Net collected</th><th class="px-4 py-3"></th></tr>
             </thead>
             <tbody class="divide-y">
                 @forelse($payments as $payment)
@@ -83,11 +83,13 @@
                         <td class="px-4 py-3 text-sm">{{ $payment->receipt_no }}</td>
                         <td class="px-4 py-3 text-sm">{{ $payment->reference ?: '—' }}</td>
                         <td class="px-4 py-3 text-sm capitalize">{{ $payment->method }}</td>
-                        <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold">₦{{ number_format((float) $payment->amount, 2) }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-sm">₦{{ number_format((float) $payment->amount, 2) }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-sm">₦{{ number_format((float) $payment->refunded_amount, 2) }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-sm font-semibold">₦{{ number_format((float) $payment->net_amount, 2) }}</td>
                         <td class="px-4 py-3 text-sm"><a class="text-blue-700 hover:underline" href="{{ url('/school/' . request()->route('school') . '/fees/receipts/' . $payment->id) }}">Receipt</a></td>
                     </tr>
                 @empty
-                    <tr><td colspan="7" class="px-5 py-8 text-center text-gray-500">No payment records found for this period.</td></tr>
+                    <tr><td colspan="9" class="px-5 py-8 text-center text-gray-500">No payment records found for this period.</td></tr>
                 @endforelse
             </tbody>
         </table>
