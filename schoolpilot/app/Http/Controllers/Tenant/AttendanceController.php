@@ -117,15 +117,23 @@ class AttendanceController extends Controller
 
         DB::transaction(function () use ($data, $staffId, $class) {
             foreach ($data['statuses'] as $studentId => $status) {
-                AttendanceRecord::updateOrCreate(
-                    ['student_id' => $studentId, 'date' => $data['date']],
-                    [
-                        'class_id' => $class->id,
-                        'status' => $status,
-                        'recorded_by' => $staffId,
-                        'notes' => $data['notes'][$studentId] ?? null,
-                    ]
-                );
+                $record = AttendanceRecord::firstOrNew([
+                    'student_id' => $studentId,
+                    'date' => $data['date'],
+                ]);
+                $previousStatus = $record->exists ? $record->status : null;
+
+                $record->fill([
+                    'class_id' => $class->id,
+                    'status' => $status,
+                    'recorded_by' => $staffId,
+                    'notes' => $data['notes'][$studentId] ?? null,
+                ]);
+                $record->save();
+
+                if ($this->attendanceNotificationType($previousStatus, $status) !== null) {
+                    $this->notifyGuardiansOfAttendanceChange($record, $previousStatus, $status);
+                }
             }
         });
 
@@ -135,4 +143,61 @@ class AttendanceController extends Controller
             'date' => $data['date'],
         ])->with('success', 'Attendance saved successfully.');
     }
+    private function attendanceNotificationType(?string $previousStatus, string $status): ?string
+    {
+        if ($previousStatus === $status) {
+            return null;
+        }
+
+        if ($previousStatus !== null && in_array($previousStatus, ['absent', 'late'], true)) {
+            return 'attendance_updated';
+        }
+
+        return in_array($status, ['absent', 'late'], true) ? 'attendance_alert' : null;
+    }
+
+    private function notifyGuardiansOfAttendanceChange(AttendanceRecord $record, ?string $previousStatus, string $status): void
+    {
+        $student = Student::find($record->student_id);
+        if (! $student) {
+            return;
+        }
+
+        $parents = DB::table('student_parents')
+            ->join('parents', 'parents.id', '=', 'student_parents.parent_id')
+            ->join('users', 'users.id', '=', 'parents.user_id')
+            ->where('student_parents.student_id', $student->id)
+            ->where('users.role', 'parent')
+            ->where('users.is_active', true)
+            ->get(['users.id']);
+
+        if ($parents->isEmpty()) {
+            return;
+        }
+
+        $isCorrection = $previousStatus !== null && $previousStatus !== $status;
+        $title = $isCorrection ? 'Attendance updated' : ($status === 'absent' ? 'Absence recorded' : 'Late arrival recorded');
+        $message = $isCorrection
+            ? $student->first_name . ' ' . $student->last_name . "'s attendance for " . $record->date->format('d M Y') . ' was updated from ' . $previousStatus . ' to ' . $status . '.'
+            : $student->first_name . ' ' . $student->last_name . ' was marked ' . $status . ' on ' . $record->date->format('d M Y') . '.';
+
+        foreach ($parents as $parent) {
+            DB::table('parent_notifications')->updateOrInsert(
+                [
+                    'attendance_record_id' => $record->id,
+                    'user_id' => $parent->id,
+                ],
+                [
+                    'student_id' => $student->id,
+                    'type' => $isCorrection ? 'attendance_updated' : 'attendance_' . $status,
+                    'title' => $title,
+                    'message' => $message,
+                    'read_at' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
+    }
+
 }

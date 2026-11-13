@@ -214,6 +214,7 @@ Route::prefix('school/{school}')->group(function () {
                 Route::get('/parent-portal', [ParentPortalController::class, 'dashboard']);
                 Route::get('/parent-portal/results/{studentId}', [ResultController::class, 'reportCard'])->whereNumber('studentId');
                 Route::post('/parent-portal/announcements/{announcement}/read', [ParentPortalController::class, 'markAnnouncementRead'])->whereNumber('announcement');
+                Route::post('/parent-portal/notifications/{notification}/read', [ParentPortalController::class, 'markNotificationRead'])->whereNumber('notification');
             });
 
             Route::get('/announcements', [AnnouncementController::class, 'index']);
