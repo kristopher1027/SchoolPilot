@@ -23,8 +23,9 @@ class SendOverdueInvoiceReminders extends Command
         }
 
         $tenants = Tenant::query()
-            ->where('status', 'active')
-            ->get(['id', 'name', 'slug', 'db_name']);
+            ->get()
+            ->filter(fn (Tenant $tenant) => $tenant->status === 'active')
+            ->values();
 
         $previousDefault = DB::getDefaultConnection();
         $previousDatabase = Config::get('database.connections.tenant_sqlite.database');
