@@ -247,6 +247,18 @@ class PayrollController extends Controller
             $payroll = DB::table('payroll_periods')->where('id', $period)->lockForUpdate()->first();
             abort_unless($payroll, 404);
             abort_unless($payroll->status === 'draft' && $payroll->staff_count > 0, 422, 'Generate a non-empty draft before approval.');
+
+            $totals = DB::table('payroll_items')
+                ->where('payroll_period_id', $period)
+                ->selectRaw('COUNT(*) as item_count, COALESCE(SUM(gross_pay), 0) as gross_total, COALESCE(SUM(deductions_total), 0) as deductions_total, COALESCE(SUM(net_pay), 0) as net_total')
+                ->first();
+
+            abort_unless(
+                $this->payrollTotalsMatch($payroll, $totals),
+                422,
+                'Payroll items or totals do not match the draft summary. Review the draft before approval.'
+            );
+
             DB::table('payroll_periods')->where('id', $period)->update([
                 'status' => 'approved', 'approved_by' => $actor->id, 'approved_at' => now(), 'updated_at' => now(),
             ]);
@@ -306,6 +318,14 @@ class PayrollController extends Controller
     private function componentAmount(float $base, string $calculation, float $value): float
     {
         return round($calculation === 'percentage' ? $base * $value / 100 : $value, 2);
+    }
+
+    private function payrollTotalsMatch(object $payroll, object $totals): bool
+    {
+        return (int) $totals->item_count === (int) $payroll->staff_count
+            && round((float) $totals->gross_total, 2) === round((float) $payroll->gross_total, 2)
+            && round((float) $totals->deductions_total, 2) === round((float) $payroll->deductions_total, 2)
+            && round((float) $totals->net_total, 2) === round((float) $payroll->net_total, 2);
     }
 
     private function audit(string $action, string $entity, int $id, mixed $old, mixed $new, Request $request): void
