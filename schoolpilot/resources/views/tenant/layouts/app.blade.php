@@ -52,6 +52,13 @@
                     <a href="/school/{{ request()->route('school') }}/inventory" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Inventory & Assets</a>
                 @endif
 
+                @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'bursar']))
+                    <a href="/school/{{ request()->route('school') }}/transport" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Transport Management</a>
+                @endif
+                @if(Auth::user()->role === 'parent')
+                    <a href="/school/{{ request()->route('school') }}/transport/my-children" class="block px-4 py-2 hover:bg-blue-800 rounded transition">My Children's Transport</a>
+                @endif
+
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'vice_principal', 'dean', 'hod', 'class_teacher', 'subject_teacher']))
                     <a href="/school/{{ request()->route('school') }}/timetable" class="block px-4 py-2 hover:bg-blue-800 rounded transition">Timetable</a>
                 @endif
