@@ -102,7 +102,7 @@
 
                 {{-- Settings only for Admin --}}
                 @if(Auth::user()->role === 'school_admin')
-                    <a href="/school/{{ request()->route('school') }}/settings" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Settings</a>
+                    <a href="#" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Settings</a>
                 @endif
             </nav>
         </aside>
