@@ -29,7 +29,7 @@ class PayrollCalculationTest extends TestCase
     public function test_payroll_creator_cannot_approve_their_own_period(): void
     {
         $controller = new PayrollController();
-        $method = new \\ReflectionMethod($controller, 'canApprovePayroll');
+        $method = new \ReflectionMethod($controller, 'canApprovePayroll');
         $method->setAccessible(true);
         $payroll = (object) ['created_by' => 17];
 
@@ -40,7 +40,7 @@ class PayrollCalculationTest extends TestCase
     public function test_legacy_payroll_without_creator_can_be_approved_by_an_authorized_manager(): void
     {
         $controller = new PayrollController();
-        $method = new \\ReflectionMethod($controller, 'canApprovePayroll');
+        $method = new \ReflectionMethod($controller, 'canApprovePayroll');
         $method->setAccessible(true);
 
         $this->assertTrue($method->invoke($controller, (object) ['created_by' => null], 23));
