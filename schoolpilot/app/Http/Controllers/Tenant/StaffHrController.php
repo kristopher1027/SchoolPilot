@@ -57,18 +57,17 @@ class StaffHrController extends Controller
         $actor = Auth::guard('school')->user();
         DB::transaction(function () use ($data, $actor) {
             foreach ($data['statuses'] as $staffId => $status) {
-                DB::table('staff_attendance_records')->updateOrInsert(
-                    ['staff_id' => $staffId, 'attendance_date' => $data['attendance_date']],
-                    [
-                        'status' => $status,
-                        'check_in' => $data['check_in'][$staffId] ?? null,
-                        'check_out' => $data['check_out'][$staffId] ?? null,
-                        'notes' => $data['notes'][$staffId] ?? null,
-                        'recorded_by' => $actor->id,
-                        'updated_at' => now(),
-                        'created_at' => now(),
-                    ]
-                );
+                $key = ['staff_id' => $staffId, 'attendance_date' => $data['attendance_date']];
+                $exists = DB::table('staff_attendance_records')->where($key)->exists();
+                DB::table('staff_attendance_records')->updateOrInsert($key, [
+                    'status' => $status,
+                    'check_in' => $data['check_in'][$staffId] ?? null,
+                    'check_out' => $data['check_out'][$staffId] ?? null,
+                    'notes' => $data['notes'][$staffId] ?? null,
+                    'recorded_by' => $actor->id,
+                    'updated_at' => now(),
+                    ...($exists ? [] : ['created_at' => now()]),
+                ]);
             }
             $this->audit($actor->id, 'staff_attendance.recorded', 'staff_attendance', null, null, [
                 'date' => $data['attendance_date'], 'staff_count' => count($data['statuses']),
