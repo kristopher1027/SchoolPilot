@@ -46,12 +46,13 @@ class ReportAnalyticsAccessTest extends TestCase
         $visible = $method->invoke($controller, [
             'finance' => ['collected' => 2500],
             'enrollment' => ['total' => 20],
+            'admissions' => ['total' => 5],
             'attendance' => ['present' => 18],
             'academics' => ['average_score' => 70],
             'staff' => ['total' => 4],
         ]);
 
-        $this->assertSame(['enrollment', 'attendance', 'academics'], array_keys($visible));
+        $this->assertSame(['enrollment', 'attendance', 'academics', 'admissions'], array_keys($visible));
         $this->assertArrayNotHasKey('finance', $visible);
         $this->assertArrayNotHasKey('staff', $visible);
     }
