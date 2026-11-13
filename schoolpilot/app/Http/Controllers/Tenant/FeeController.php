@@ -546,7 +546,7 @@ class FeeController extends Controller
         }
 
         $actorId = (int) Auth::guard('school')->id();
-        if ((int) $record->requested_by === $actorId) {
+        if (! $this->canReviewRefund((int) $record->requested_by, $actorId)) {
             abort(403, 'The person who requested a refund cannot reject their own request.');
         }
 
