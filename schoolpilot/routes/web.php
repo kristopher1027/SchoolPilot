@@ -181,12 +181,15 @@ Route::prefix('school/{school}')->group(function () {
                 Route::get('/website/manage', [SchoolWebsiteController::class, 'adminIndex']);
                 Route::post('/website/settings', [SchoolWebsiteController::class, 'saveSettings']);
                 Route::post('/website/pages', [SchoolWebsiteController::class, 'storePage']);
+                Route::put('/website/pages/{page}', [SchoolWebsiteController::class, 'updatePage'])->whereNumber('page');
                 Route::post('/website/pages/{page}/status', [SchoolWebsiteController::class, 'updatePageStatus'])->whereNumber('page');
                 Route::post('/website/news', [SchoolWebsiteController::class, 'storePost']);
+                Route::put('/website/news/{post}', [SchoolWebsiteController::class, 'updatePost'])->whereNumber('post');
                 Route::post('/website/gallery', [SchoolWebsiteController::class, 'storeGalleryItem']);
                 Route::post('/website/gallery/{item}/status', [SchoolWebsiteController::class, 'updateGalleryStatus'])->whereNumber('item');
                 Route::post('/website/news/{post}/status', [SchoolWebsiteController::class, 'updatePostStatus'])->whereNumber('post');
                 Route::post('/website/events', [SchoolWebsiteController::class, 'storeEvent']);
+                Route::put('/website/events/{event}', [SchoolWebsiteController::class, 'updateEventDetails'])->whereNumber('event');
                 Route::post('/website/events/{event}/status', [SchoolWebsiteController::class, 'updateEvent'])->whereNumber('event');
                 Route::post('/website/clubs', [SchoolWebsiteController::class, 'storeClub']);
                 Route::post('/website/club-members', [SchoolWebsiteController::class, 'storeClubMember']);
