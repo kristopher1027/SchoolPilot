@@ -51,6 +51,15 @@ class SchoolWebsiteController extends Controller
         return view('public-school.post', compact('school', 'settings', 'post', 'pages'));
     }
 
+    public function publicGallery(string $school)
+    {
+        $settings = DB::table('school_website_settings')->first();
+        abort_unless($settings && $settings->is_published, 404);
+        $gallery = DB::table('school_website_gallery_items')->where('status', 'published')->orderBy('album')->orderBy('sort_order')->orderByDesc('id')->paginate(24);
+        $pages = DB::table('school_website_pages')->where('status', 'published')->orderBy('sort_order')->get();
+        return view('public-school.gallery', compact('school', 'settings', 'gallery', 'pages'));
+    }
+
     public function publicEvents(string $school)
     {
         $settings = DB::table('school_website_settings')->first();
@@ -102,13 +111,14 @@ class SchoolWebsiteController extends Controller
         $settings = DB::table('school_website_settings')->first();
         $pages = DB::table('school_website_pages')->orderBy('sort_order')->orderByDesc('id')->get();
         $posts = DB::table('school_website_posts')->orderByDesc('id')->limit(30)->get();
+        $galleryItems = DB::table('school_website_gallery_items')->orderBy('album')->orderBy('sort_order')->orderByDesc('id')->limit(60)->get();
         $events = DB::table('school_events')->orderByDesc('starts_at')->limit(30)->get();
         $clubs = DB::table('school_clubs')->orderBy('name')->get();
         $registrations = DB::table('school_event_registrations as r')->join('school_events as e', 'e.id', '=', 'r.event_id')->select('r.*', 'e.title as event_title')->orderByDesc('r.registered_at')->limit(50)->get();
         $members = DB::table('school_club_members as m')->join('school_clubs as c', 'c.id', '=', 'm.club_id')->join('students as s', 's.id', '=', 'm.student_id')->select('m.*', 'c.name as club_name', 's.first_name', 's.last_name', 's.admission_no')->orderBy('c.name')->limit(100)->get();
         $students = DB::table('students')->where('status', 'active')->orderBy('last_name')->orderBy('first_name')->get();
         $staff = DB::table('staff as s')->join('users as u', 'u.id', '=', 's.user_id')->where('u.is_active', true)->select('s.id', 'u.name')->orderBy('u.name')->get();
-        return view('tenant.school-website.index', compact('settings', 'pages', 'posts', 'events', 'clubs', 'registrations', 'members', 'students', 'staff'));
+        return view('tenant.school-website.index', compact('settings', 'pages', 'posts', 'galleryItems', 'events', 'clubs', 'registrations', 'members', 'students', 'staff'));
     }
 
     public function saveSettings(Request $request)
@@ -174,6 +184,31 @@ class SchoolWebsiteController extends Controller
         DB::table('school_website_posts')->where('id', $post)->update($data + ['published_at' => $data['status'] === 'published' ? ($old->published_at ?: now()) : null, 'updated_at' => now()]);
         $this->audit('website.post.status_changed', 'school_website_post', $post, ['status' => $old->status], $data);
         return $this->back($request, 'News status updated.');
+    }
+
+    public function storeGalleryItem(Request $request)
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:180'], 'album' => ['nullable', 'string', 'max:120'],
+            'image_url' => ['required', 'url', 'max:2048'], 'caption' => ['nullable', 'string', 'max:500'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'status' => ['required', Rule::in(['draft', 'published'])],
+        ]);
+        $id = DB::table('school_website_gallery_items')->insertGetId($data + [
+            'sort_order' => $data['sort_order'] ?? 0, 'created_by' => Auth::guard('school')->id(),
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->audit('website.gallery_item.created', 'school_website_gallery_item', $id, null, $data);
+        return $this->back($request, 'Gallery item saved.');
+    }
+
+    public function updateGalleryStatus(Request $request, int $item)
+    {
+        $data = $request->validate(['status' => ['required', Rule::in(['draft', 'published'])]]);
+        $old = DB::table('school_website_gallery_items')->where('id', $item)->first(); abort_unless($old, 404);
+        DB::table('school_website_gallery_items')->where('id', $item)->update($data + ['updated_at' => now()]);
+        $this->audit('website.gallery_item.status_changed', 'school_website_gallery_item', $item, ['status' => $old->status], $data);
+        return $this->back($request, 'Gallery item status updated.');
     }
 
     public function storeEvent(Request $request)
