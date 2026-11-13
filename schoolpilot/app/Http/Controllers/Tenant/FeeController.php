@@ -396,6 +396,176 @@ class FeeController extends Controller
             ->with('success', 'Payment recorded. Receipt generated.');
     }
 
+    public function requestRefund(Request $request, Payment $payment)
+    {
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999'],
+            'reason' => ['required', 'string', 'min:8', 'max:1000'],
+            'reference' => ['nullable', 'string', 'max:120'],
+        ]);
+
+        $refund = DB::transaction(function () use ($data, $payment) {
+            $recorded = Payment::whereKey($payment->id)->firstOrFail();
+            $approvedRefunds = (float) DB::table('payment_refunds')
+                ->where('payment_id', $recorded->id)
+                ->where('status', 'approved')
+                ->sum('amount');
+            $pendingRefunds = (float) DB::table('payment_refunds')
+                ->where('payment_id', $recorded->id)
+                ->where('status', 'pending')
+                ->sum('amount');
+            $available = round((float) $recorded->amount - $approvedRefunds - $pendingRefunds, 2);
+            $amount = round((float) $data['amount'], 2);
+
+            if ($amount > $available) {
+                throw ValidationException::withMessages([
+                    'amount' => 'The refund exceeds the payment amount remaining after pending and approved refunds.',
+                ]);
+            }
+
+            $id = DB::table('payment_refunds')->insertGetId([
+                'payment_id' => $recorded->id,
+                'amount' => $amount,
+                'reason' => $data['reason'],
+                'reference' => $data['reference'] ?? null,
+                'status' => 'pending',
+                'requested_by' => Auth::guard('school')->id(),
+                'reviewed_by' => null,
+                'reviewed_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $this->audit('payment.refund_requested', 'payment_refund', $id, null, [
+                'payment_id' => $recorded->id,
+                'amount' => $amount,
+                'reason' => $data['reason'],
+            ]);
+
+            return DB::table('payment_refunds')->find($id);
+        });
+
+        return redirect($this->schoolPath($request, '/fees/invoices/' . $payment->invoice_id))
+            ->with('success', 'Refund request submitted for independent approval.');
+    }
+
+    public function approveRefund(Request $request, int $refund)
+    {
+        $approved = DB::transaction(function () use ($refund) {
+            $record = DB::table('payment_refunds')->where('id', $refund)->first();
+
+            if (! $record || $record->status !== 'pending') {
+                throw ValidationException::withMessages([
+                    'refund' => 'This refund request is no longer pending.',
+                ]);
+            }
+
+            $actorId = (int) Auth::guard('school')->id();
+            if ((int) $record->requested_by === $actorId) {
+                abort(403, 'The person who requested a refund cannot approve it. Another authorized manager must review it.');
+            }
+
+            $payment = Payment::findOrFail($record->payment_id);
+            $approvedTotal = (float) DB::table('payment_refunds')
+                ->where('payment_id', $payment->id)
+                ->where('status', 'approved')
+                ->sum('amount');
+            if (round($approvedTotal + (float) $record->amount, 2) > round((float) $payment->amount, 2)) {
+                throw ValidationException::withMessages([
+                    'refund' => 'The approved refund total would exceed the original payment amount.',
+                ]);
+            }
+
+            $changed = DB::table('payment_refunds')
+                ->where('id', $record->id)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'approved',
+                    'reviewed_by' => $actorId,
+                    'reviewed_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            if ($changed !== 1) {
+                throw ValidationException::withMessages([
+                    'refund' => 'This refund request has already been reviewed.',
+                ]);
+            }
+
+            $amount = number_format((float) $record->amount, 2, '.', '');
+            $updated = DB::table('invoices')
+                ->where('id', $payment->invoice_id)
+                ->where('amount_paid', '>=', (float) $record->amount)
+                ->decrement('amount_paid', (float) $record->amount, [
+                    'balance' => DB::raw("balance + {$amount}"),
+                    'status' => DB::raw("CASE WHEN amount_paid - {$amount} <= 0 THEN 'unpaid' ELSE 'partial' END"),
+                    'updated_at' => now(),
+                ]);
+            if ($updated !== 1) {
+                throw ValidationException::withMessages([
+                    'refund' => 'The invoice payment totals have changed. Review the invoice before approving this refund.',
+                ]);
+            }
+
+            $this->audit('payment.refund_approved', 'payment_refund', (int) $record->id, [
+                'status' => 'pending',
+            ], [
+                'status' => 'approved',
+                'payment_id' => $payment->id,
+                'amount' => (float) $record->amount,
+                'reviewed_by' => $actorId,
+            ]);
+
+            return $payment;
+        });
+
+        return redirect($this->schoolPath($request, '/fees/invoices/' . $approved->invoice_id))
+            ->with('success', 'Refund approved and invoice balance updated.');
+    }
+
+    public function rejectRefund(Request $request, int $refund)
+    {
+        $record = DB::table('payment_refunds')->where('id', $refund)->first();
+        if (! $record || $record->status !== 'pending') {
+            throw ValidationException::withMessages([
+                'refund' => 'This refund request is no longer pending.',
+            ]);
+        }
+
+        $actorId = (int) Auth::guard('school')->id();
+        if ((int) $record->requested_by === $actorId) {
+            abort(403, 'The person who requested a refund cannot reject their own request.');
+        }
+
+        $changed = DB::table('payment_refunds')
+            ->where('id', $record->id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'rejected',
+                'reviewed_by' => $actorId,
+                'reviewed_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+        if ($changed !== 1) {
+            throw ValidationException::withMessages([
+                'refund' => 'This refund request has already been reviewed.',
+            ]);
+        }
+
+        $this->audit('payment.refund_rejected', 'payment_refund', (int) $record->id, [
+            'status' => 'pending',
+        ], [
+            'status' => 'rejected',
+            'payment_id' => $record->payment_id,
+            'reviewed_by' => $actorId,
+        ]);
+
+        $payment = Payment::findOrFail($record->payment_id);
+
+        return redirect($this->schoolPath($request, '/fees/invoices/' . $payment->invoice_id))
+            ->with('success', 'Refund request rejected.');
+    }
+
     public function receipt(Payment $payment)
     {
         $payment->load(['invoice.student', 'invoice.academicSession', 'invoice.term']);
