@@ -36,7 +36,7 @@
                 <div><h3 class="mb-2 text-sm font-semibold text-gray-800">Attach salary components (optional)</h3><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     @foreach($components as $i=>$component)
                         @if($component->is_active)
-                            <label class="rounded-lg border border-gray-200 p-3 text-sm"><span class="flex items-center gap-2 font-medium"><input type="checkbox" name="components[{{ $i }}][id]" value="{{ $component->id }}"> {{ $component->name }} ({{ ucfirst($component->type) }})</span><span class="mt-2 block text-xs text-gray-500">Override default {{ number_format($component->default_value,2) }}{{ $component->calculation==='percentage'?'%':'' }}<input type="number" min="0" step="0.01" name="components[{{ $i }}][amount_override]" placeholder="Leave blank to use default" class="mt-1 block w-full rounded-lg border-gray-300 text-sm"></span></label>
+                            <label class="rounded-lg border border-gray-200 p-3 text-sm"><span class="flex items-center gap-2 font-medium"><input type="checkbox" name="component_ids[]" value="{{ $component->id }}"> {{ $component->name }} ({{ ucfirst($component->type) }})</span><span class="mt-2 block text-xs text-gray-500">Override default {{ number_format($component->default_value,2) }}{{ $component->calculation==='percentage'?'%':'' }}<input type="number" min="0" step="0.01" name="component_overrides[{{ $component->id }}]" placeholder="Leave blank to use default" class="mt-1 block w-full rounded-lg border-gray-300 text-sm"></span></label>
                         @endif
                     @endforeach
                 </div></div>
