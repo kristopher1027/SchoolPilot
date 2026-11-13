@@ -38,7 +38,7 @@ class InventoryController extends Controller
         $assets = Asset::with(['category', 'location', 'maintenance'])->orderBy('name')->get();
         $maintenance = AssetMaintenance::with('asset')->latest()->limit(20)->get();
         $movements = InventoryMovement::with(['item', 'location'])->latest('movement_at')->limit(30)->get();
-        $users = User::where('is_active', true)->orderBy('name')->get();
+        $users = User::where('is_active', true)->whereNotIn('role', ['student', 'parent'])->orderBy('name')->get();
 
         $stockRows = InventoryStock::with('item')->get();
         $lowStock = $items->filter(fn ($item) => (float) $item->stocks->sum('quantity') <= (float) $item->reorder_level);
@@ -58,7 +58,7 @@ class InventoryController extends Controller
     public function storeCategory(Request $request)
     {
         $data = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:120', Rule::unique('inventory_categories', 'name')->where(fn ($query) => $query->where('category_type', $request->input('category_type')))],
             'category_type' => ['required', Rule::in(['stock', 'asset'])],
             'description' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -110,10 +110,14 @@ class InventoryController extends Controller
             'item_id' => ['required', 'integer', 'exists:inventory_items,id'],
             'location_id' => ['required', 'integer', 'exists:stock_locations,id'],
             'movement_type' => ['required', Rule::in(['receipt', 'issue', 'adjustment'])],
-            'quantity' => ['required', 'numeric', 'gt:0', 'max:9999999999'],
+            'quantity' => ['required', 'numeric', 'min:0', 'max:9999999999'],
             'reference' => ['nullable', 'string', 'max:120'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        if ($data['movement_type'] !== 'adjustment' && (float) $data['quantity'] <= 0) {
+            throw ValidationException::withMessages(['quantity' => 'Receipts and issues must be greater than zero.']);
+        }
 
         DB::transaction(function () use ($data) {
             $stock = InventoryStock::where('item_id', $data['item_id'])
@@ -277,7 +281,7 @@ class InventoryController extends Controller
             'category_id' => ['nullable', 'integer', Rule::exists('inventory_categories', 'id')->where('category_type', 'asset')],
             'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'location_id' => ['nullable', 'integer', 'exists:stock_locations,id'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
+            'assigned_to' => ['nullable', 'integer', Rule::exists('users', 'id')->whereNotIn('role', ['student', 'parent'])],
             'serial_no' => ['nullable', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:3000'],
             'purchase_date' => ['nullable', 'date'],
@@ -313,7 +317,10 @@ class InventoryController extends Controller
             if (in_array($data['status'], ['scheduled', 'in_progress'], true)) {
                 $asset->update(['status' => 'under_maintenance']);
             } elseif ($data['status'] === 'completed' && $asset->status === 'under_maintenance') {
-                $asset->update(['status' => 'active']);
+                $hasOpenWork = $asset->maintenance()->whereIn('status', ['scheduled', 'in_progress'])->exists();
+                if (! $hasOpenWork) {
+                    $asset->update(['status' => 'active']);
+                }
             }
             $this->audit('asset.maintenance_recorded', 'asset', $asset->id, null, ['status' => $data['status'], 'cost' => $data['cost'] ?? 0]);
         });
