@@ -43,11 +43,11 @@ class FeeController extends Controller
         $paymentsQuery = $this->reconciliationQuery($filters);
         $summary = [
             'count' => (clone $paymentsQuery)->count(),
-            'collected' => round((float) (clone $paymentsQuery)->sum('p.amount'), 2),
+            'collected' => round((float) (clone $paymentsQuery)->sum(DB::raw('p.amount - COALESCE(refund_totals.refunded_amount, 0)')), 2),
         ];
         $byMethod = (clone $paymentsQuery)
             ->select('p.method')
-            ->selectRaw('COUNT(p.id) as payment_count, SUM(p.amount) as amount_total')
+            ->selectRaw('COUNT(p.id) as payment_count, SUM(p.amount - COALESCE(refund_totals.refunded_amount, 0)) as amount_total')
             ->groupBy('p.method')
             ->orderBy('p.method')
             ->get();
@@ -56,6 +56,7 @@ class FeeController extends Controller
                 'p.id', 'p.amount', 'p.method', 'p.reference', 'p.receipt_no', 'p.paid_at',
                 'i.id as invoice_id', 's.admission_no', 's.first_name', 's.last_name',
             ])
+            ->selectRaw('COALESCE(refund_totals.refunded_amount, 0) as refunded_amount, p.amount - COALESCE(refund_totals.refunded_amount, 0) as net_amount')
             ->orderByDesc('p.paid_at')
             ->orderByDesc('p.id')
             ->paginate(25)
@@ -75,6 +76,7 @@ class FeeController extends Controller
                 's.admission_no', 's.first_name', 's.last_name', 'i.id as invoice_id',
                 'a.name as session_name', 't.name as term_name',
             ])
+            ->selectRaw('COALESCE(refund_totals.refunded_amount, 0) as refunded_amount, p.amount - COALESCE(refund_totals.refunded_amount, 0) as net_amount')
             ->orderBy('p.paid_at')
             ->orderBy('p.id')
             ->get();
@@ -84,7 +86,7 @@ class FeeController extends Controller
 
         return response()->streamDownload(function () use ($payments) {
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Paid at', 'Receipt number', 'Payment reference', 'Method', 'Amount (NGN)', 'Admission number', 'Student', 'Invoice ID', 'Academic session', 'Term']);
+            fputcsv($output, ['Paid at', 'Receipt number', 'Payment reference', 'Method', 'Gross amount (NGN)', 'Refunded amount (NGN)', 'Net collected (NGN)', 'Admission number', 'Student', 'Invoice ID', 'Academic session', 'Term']);
             foreach ($payments as $payment) {
                 $values = [
                     $payment->paid_at,
@@ -92,6 +94,8 @@ class FeeController extends Controller
                     $payment->reference,
                     $payment->method,
                     $payment->amount,
+                    $payment->refunded_amount,
+                    $payment->net_amount,
                     $payment->admission_no,
                     trim($payment->first_name . ' ' . $payment->last_name),
                     $payment->invoice_id,
@@ -117,7 +121,16 @@ class FeeController extends Controller
 
     private function reconciliationQuery(array $filters)
     {
+        $approvedRefundTotals = DB::table('payment_refunds')
+            ->select('payment_id')
+            ->selectRaw('SUM(amount) as refunded_amount')
+            ->where('status', 'approved')
+            ->groupBy('payment_id');
+
         return DB::table('payments as p')
+            ->leftJoinSub($approvedRefundTotals, 'refund_totals', function ($join) {
+                $join->on('refund_totals.payment_id', '=', 'p.id');
+            })
             ->join('invoices as i', 'i.id', '=', 'p.invoice_id')
             ->join('students as s', 's.id', '=', 'i.student_id')
             ->when($filters['from'], fn ($query) => $query->whereDate('p.paid_at', '>=', $filters['from']))
