@@ -14,6 +14,40 @@
     <div class="mb-6 rounded-lg bg-white p-5 shadow">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div>
+                <h4 class="text-lg font-semibold text-gray-800">Notifications</h4>
+                <p class="text-sm text-gray-500">Important attendance updates for your linked children.</p>
+            </div>
+            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">{{ $unreadNotificationCount }} unread</span>
+        </div>
+        @forelse($notifications as $notification)
+            <article class="flex flex-wrap items-start justify-between gap-3 border-t py-3 first:border-0 {{ $notification->read_at ? '' : 'bg-blue-50/50' }}">
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h5 class="font-semibold text-gray-800">{{ $notification->title }}</h5>
+                        @if(! $notification->read_at)
+                            <span class="rounded-full bg-blue-100 px-2 py-1 text-xs text-blue-700">New</span>
+                        @else
+                            <span class="text-xs text-gray-500">Read</span>
+                        @endif
+                    </div>
+                    <p class="mt-1 text-sm text-gray-700">{{ $notification->message }}</p>
+                    <p class="mt-1 text-xs text-gray-500">{{ \Illuminate\Support\Carbon::parse($notification->created_at)->format('d M Y, h:i A') }}</p>
+                </div>
+                @if(! $notification->read_at)
+                    <form method="POST" action="{{ url('/school/' . request()->route('school') . '/parent-portal/notifications/' . $notification->id . '/read') }}">
+                        @csrf
+                        <button class="rounded border border-blue-200 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50">Mark as read</button>
+                    </form>
+                @endif
+            </article>
+        @empty
+            <p class="text-sm text-gray-500">You have no notifications yet.</p>
+        @endforelse
+    </div>
+
+    <div class="mb-6 rounded-lg bg-white p-5 shadow">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
                 <h4 class="text-lg font-semibold text-gray-800">School announcements</h4>
                 <p class="text-sm text-gray-500">Updates published for parents and the whole school.</p>
             </div>
