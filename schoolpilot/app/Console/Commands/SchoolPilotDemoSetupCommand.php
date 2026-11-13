@@ -84,7 +84,7 @@ class SchoolPilotDemoSetupCommand extends Command
                 '--force' => true,
             ]);
             if ($migrationExitCode !== self::SUCCESS) {
-                throw new \\RuntimeException('Tenant database migrations could not be completed.');
+                throw new \RuntimeException('Tenant database migrations could not be completed.');
             }
 
             // This seeder only inserts missing defaults; existing school data is preserved.
