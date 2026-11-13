@@ -254,6 +254,16 @@ Route::prefix('school/{school}')->group(function () {
                 Route::get('/fees/receipts/{payment}', [FeeController::class, 'receipt'])->whereNumber('payment');
             });
 
+            Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar,librarian')->group(function () {
+                Route::get('/library', [LibraryController::class, 'index']);
+                Route::post('/library/categories', [LibraryController::class, 'storeCategory']);
+                Route::post('/library/books', [LibraryController::class, 'storeBook']);
+                Route::post('/library/loans', [LibraryController::class, 'issue']);
+                Route::post('/library/loans/{loan}/return', [LibraryController::class, 'returnCopy'])->whereNumber('loan');
+                Route::post('/library/loans/{loan}/renew', [LibraryController::class, 'renew'])->whereNumber('loan');
+                Route::post('/library/reservations', [LibraryController::class, 'reserve']);
+            });
+
             Route::get('/timetable', [TimetableController::class, 'index'])
                 ->middleware(RoleMiddleware::class . ':school_admin,principal,vice_principal,dean,hod,class_teacher,subject_teacher');
             Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
