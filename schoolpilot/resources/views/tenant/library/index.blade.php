@@ -35,8 +35,8 @@
             <input name="publication_year" type="number" min="1000" max="{{ now()->year + 1 }}" placeholder="Publication year" class="rounded border-gray-300">
             <textarea name="description" maxlength="3000" placeholder="Description" class="rounded border-gray-300 sm:col-span-2"></textarea>
             <label class="text-sm font-medium sm:col-span-2">Accession numbers — enter one per line</label>
-            <textarea name="accession_numbers[]" required rows="3" placeholder="LIB-0001&#10;LIB-0002" class="rounded border-gray-300 sm:col-span-2"></textarea>
-            <p class="text-xs text-gray-500 sm:col-span-2">For multiple copies, submit each accession number as a separate accession_numbers[] field. Add copies individually if needed.</p>
+            <textarea name="accession_numbers" required rows="3" placeholder="LIB-0001&#10;LIB-0002" class="rounded border-gray-300 sm:col-span-2"></textarea>
+            <p class="text-xs text-gray-500 sm:col-span-2">Enter one unique accession number per line, up to 100 copies per book.</p>
             <button class="rounded bg-blue-700 px-4 py-2 font-semibold text-white sm:col-span-2">Save book</button>
         </form>
     </section>
@@ -60,8 +60,7 @@
     <form method="POST" action="{{ url('/school/' . request()->route('school') . '/library/loans') }}" class="grid grid-cols-1 gap-3 md:grid-cols-4">
         @csrf
         <select name="copy_id" required class="rounded border-gray-300"><option value="">Available copy</option>@foreach($books as $book)@foreach($book->copies->where('status', 'available') as $copy)<option value="{{ $copy->id }}">{{ $book->title }} — {{ $copy->accession_no }}</option>@endforeach @endforeach</select>
-        <select name="member_type" id="issue-member-type" required class="rounded border-gray-300"><option value="student">Student</option><option value="staff">Staff</option></select>
-        <select name="member_id" required class="rounded border-gray-300"><optgroup label="Students">@foreach($students as $student)<option value="{{ $student->id }}">{{ $student->admission_no }} — {{ $student->first_name }} {{ $student->last_name }}</option>@endforeach</optgroup><optgroup label="Staff">@foreach($staff as $person)<option value="{{ $person->id }}">{{ $person->user?->name ?? 'Staff #' . $person->id }}</option>@endforeach</optgroup></select>
+        <select name="member" required class="rounded border-gray-300"><option value="">Select member</option><optgroup label="Students">@foreach($students as $student)<option value="student:{{ $student->id }}">{{ $student->admission_no }} — {{ $student->first_name }} {{ $student->last_name }}</option>@endforeach</optgroup><optgroup label="Staff">@foreach($staff as $person)<option value="staff:{{ $person->id }}">{{ $person->user?->name ?? 'Staff #' . $person->id }}</option>@endforeach</optgroup></select>
         <input type="date" name="due_at" required min="{{ today()->toDateString() }}" value="{{ today()->addDays(14)->toDateString() }}" class="rounded border-gray-300">
         <button class="rounded bg-green-700 px-4 py-2 font-semibold text-white md:col-span-4">Issue copy</button>
     </form>
