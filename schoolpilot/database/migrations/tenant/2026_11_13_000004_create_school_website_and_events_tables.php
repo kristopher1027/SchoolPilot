@@ -50,6 +50,19 @@ return new class extends Migration
             $table->index(['status', 'published_at']);
         });
 
+        Schema::create('school_website_gallery_items', function (Blueprint $table) {
+            $table->id();
+            $table->string('title', 180);
+            $table->string('album', 120)->nullable();
+            $table->string('image_url', 2048);
+            $table->string('caption', 500)->nullable();
+            $table->unsignedInteger('sort_order')->default(0);
+            $table->string('status', 20)->default('draft');
+            $table->foreignId('created_by')->constrained('users')->restrictOnDelete();
+            $table->timestamps();
+            $table->index(['status', 'album', 'sort_order']);
+        });
+
         Schema::create('school_events', function (Blueprint $table) {
             $table->id();
             $table->string('title', 180);
@@ -110,6 +123,7 @@ return new class extends Migration
         Schema::dropIfExists('school_club_members');
         Schema::dropIfExists('school_clubs');
         Schema::dropIfExists('school_event_registrations');
+        Schema::dropIfExists('school_website_gallery_items');
         Schema::dropIfExists('school_events');
         Schema::dropIfExists('school_website_posts');
         Schema::dropIfExists('school_website_pages');
