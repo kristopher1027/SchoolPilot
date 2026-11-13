@@ -44,7 +44,7 @@ class SchoolPilotDemoSetupCommand extends Command
         // backfill that same database rather than trying to provision a new one.
         $legacyDatabaseName = $slug === 'greenfield' ? 'greenfield.sqlite' : null;
         $legacyDatabasePath = $legacyDatabaseName
-            ? database_path('tenants/' . $legacyDatabaseName)
+            ? rtrim((string) Config::get('tenancy.database.sqlite.path', database_path('tenants')), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $legacyDatabaseName
             : null;
 
         if (! $tenant && (! $legacyDatabasePath || ! is_file($legacyDatabasePath))) {
@@ -61,7 +61,7 @@ class SchoolPilotDemoSetupCommand extends Command
         }
 
         $databaseName = $tenant ? basename($tenant->db_name) : $legacyDatabaseName;
-        $databasePath = database_path('tenants/' . $databaseName);
+        $databasePath = rtrim((string) Config::get('tenancy.database.sqlite.path', database_path('tenants')), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . $databaseName;
 
         if (! is_file($databasePath)) {
             $this->components->error('The configured demo tenant database does not exist.');
