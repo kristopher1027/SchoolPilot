@@ -55,6 +55,16 @@ class ReportAnalyticsAccessTest extends TestCase
         $this->assertArrayNotHasKey('staff', $visible);
     }
 
+    public function test_csv_export_escapes_spreadsheet_formula_prefixes(): void
+    {
+        $controller = new ReportController();
+        $method = new \\ReflectionMethod($controller, 'safeCsvValue');
+        $method->setAccessible(true);
+
+        $this->assertSame("'=SUM(A1:A2)", $method->invoke($controller, '=SUM(A1:A2)'));
+        $this->assertSame('School name', $method->invoke($controller, 'School name'));
+    }
+
     public function test_csv_rows_include_scalar_metrics_and_class_breakdowns(): void
     {
         $controller = new ReportController();
