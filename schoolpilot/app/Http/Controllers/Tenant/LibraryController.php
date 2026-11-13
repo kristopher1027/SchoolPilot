@@ -105,7 +105,7 @@ class LibraryController extends Controller
     {
         $data = $request->validate([
             'copy_id' => ['required', 'integer', 'exists:library_copies,id'],
-            'member' => ['required', 'regex:/^(student|staff):[0-9]+$/],
+            'member' => ['required', 'regex:/^(student|staff):[0-9]+$/'],
             'due_at' => ['required', 'date', 'after_or_equal:today'],
         ]);
 
@@ -193,7 +193,7 @@ class LibraryController extends Controller
     {
         $data = $request->validate([
             'book_id' => ['required', 'integer', 'exists:library_books,id'],
-            'member' => ['required', 'regex:/^(student|staff):[0-9]+$/],
+            'member' => ['required', 'regex:/^(student|staff):[0-9]+$/'],
         ]);
 
         [$memberType, $memberId] = explode(':', $data['member']);
