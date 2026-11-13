@@ -157,6 +157,7 @@ Route::prefix('school/{school}')->group(function () {
         Route::get('/website', [SchoolWebsiteController::class, 'publicHome']);
         Route::get('/website/pages/{slug}', [SchoolWebsiteController::class, 'publicPage']);
         Route::get('/website/news', [SchoolWebsiteController::class, 'publicNews']);
+        Route::get('/website/gallery', [SchoolWebsiteController::class, 'publicGallery']);
         Route::get('/website/news/{slug}', [SchoolWebsiteController::class, 'publicPost']);
         Route::get('/website/events', [SchoolWebsiteController::class, 'publicEvents']);
         Route::get('/website/events/{slug}', [SchoolWebsiteController::class, 'publicEvent'])->where('slug', '[A-Za-z0-9-]+');
@@ -182,6 +183,8 @@ Route::prefix('school/{school}')->group(function () {
                 Route::post('/website/pages', [SchoolWebsiteController::class, 'storePage']);
                 Route::post('/website/pages/{page}/status', [SchoolWebsiteController::class, 'updatePageStatus'])->whereNumber('page');
                 Route::post('/website/news', [SchoolWebsiteController::class, 'storePost']);
+                Route::post('/website/gallery', [SchoolWebsiteController::class, 'storeGalleryItem']);
+                Route::post('/website/gallery/{item}/status', [SchoolWebsiteController::class, 'updateGalleryStatus'])->whereNumber('item');
                 Route::post('/website/news/{post}/status', [SchoolWebsiteController::class, 'updatePostStatus'])->whereNumber('post');
                 Route::post('/website/events', [SchoolWebsiteController::class, 'storeEvent']);
                 Route::post('/website/events/{event}/status', [SchoolWebsiteController::class, 'updateEvent'])->whereNumber('event');
