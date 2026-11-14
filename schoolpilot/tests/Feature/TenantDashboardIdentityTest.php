@@ -157,6 +157,10 @@ class TenantDashboardIdentityTest extends TestCase
             ->assertSee('/school/results-test/logout')
             ->assertDontSee('/school/greenfield');
 
+        // Re-establish tenant authentication between independent requests.
+        $this->actingAs(User::query()->findOrFail($this->adminId), 'school')
+            ->withSession(['_school_authenticated_slug' => 'results-test']);
+
         $this->get('/school/results-test/dashboard')
             ->assertOk()
             ->assertSee('Sunrise Academy today.')
