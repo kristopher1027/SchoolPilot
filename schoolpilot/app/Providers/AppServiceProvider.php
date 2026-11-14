@@ -25,16 +25,14 @@ class AppServiceProvider extends ServiceProvider
         // Resolve the school identity only after tenant middleware has selected
         // the active school's database connection.
         View::composer('tenant.layouts.app', function ($view): void {
-            $schoolName = null;
+            $settings = Schema::connection('tenant_sqlite')->hasTable('settings')
+                ? DB::connection('tenant_sqlite')->table('settings')->pluck('value', 'key')
+                : collect();
 
-            if (Schema::connection('tenant_sqlite')->hasTable('settings')) {
-                $schoolName = DB::connection('tenant_sqlite')
-                    ->table('settings')
-                    ->where('key', 'school_name')
-                    ->value('value');
-            }
-
-            $view->with('tenantSchoolName', $schoolName ?: 'Your School');
+            $view->with([
+                'tenantSchoolName' => $settings['school_name'] ?: 'Your School',
+                'tenantSchoolMotto' => $settings['motto'] ?? null,
+            ]);
         });
     }
 }
