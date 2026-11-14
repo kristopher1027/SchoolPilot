@@ -309,6 +309,8 @@ Route::prefix('school/{school}')->group(function () {
                 Route::get('/academic', [AcademicController::class, 'index']);
                 Route::post('/academic/sessions', [AcademicController::class, 'storeSession']);
                 Route::post('/academic/terms', [AcademicController::class, 'storeTerm']);
+                Route::post('/academic/sessions/{session}/current', [AcademicController::class, 'setCurrentSession'])->whereNumber('session');
+                Route::post('/academic/terms/{term}/current', [AcademicController::class, 'setCurrentTerm'])->whereNumber('term');
                 Route::post('/academic/classes', [AcademicController::class, 'storeClass']);
                 Route::post('/academic/subjects', [AcademicController::class, 'storeSubject']);
 
