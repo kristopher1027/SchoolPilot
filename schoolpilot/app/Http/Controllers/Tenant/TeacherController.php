@@ -5,22 +5,14 @@ namespace App\Http\Controllers\Tenant;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant\Staff;
 use App\Models\Tenant\TeacherSubject;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class TeacherController extends Controller
 {
-    public function __construct()
-    {
-        Config::set('database.connections.tenant_sqlite.database', database_path('tenants/greenfield.sqlite'));
-        DB::purge('tenant_sqlite');
-        Config::set('database.default', 'tenant_sqlite');
-    }
         public function classResults(Request $request)
     {
         if (!$request->has('class_id')) {
-            return redirect('/school/greenfield/results');
+            return redirect('/school/' . request()->route('school') . '/results');
         }
 
         $classId = $request->class_id;
