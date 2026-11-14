@@ -248,12 +248,14 @@ Route::prefix('school/{school}')->group(function () {
                 ])->count();
                 $totalClasses = SchoolClass::count();
                 $currentSession = AcademicSession::where('is_current', true)->first();
+                $schoolName = DB::table('settings')->where('key', 'school_name')->value('value');
 
                 return view('tenant.dashboard', compact(
                     'totalStudents',
                     'totalStaff',
                     'totalClasses',
-                    'currentSession'
+                    'currentSession',
+                    'schoolName'
                 ));
             })->middleware(RoleMiddleware::class . ':school_admin,principal,vice_principal,dean,hod,class_teacher,subject_teacher,bursar');
 
