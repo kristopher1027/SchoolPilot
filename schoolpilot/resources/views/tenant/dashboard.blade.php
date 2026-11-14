@@ -3,7 +3,7 @@
 @section('content')
     <div class="mb-6">
         <h3 class="text-2xl font-bold text-gray-800">Welcome back, {{ Auth::user()->name }}!</h3>
-        <p class="text-gray-600">Here is what is happening at Greenfield Academy today.</p>
+        <p class="text-gray-600">Here is what is happening at {{ $schoolName ?: 'your school' }} today.</p>
     </div>
 
         <!-- Quick Stats Grid -->
