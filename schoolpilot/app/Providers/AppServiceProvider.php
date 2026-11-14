@@ -30,8 +30,8 @@ class AppServiceProvider extends ServiceProvider
                 : collect();
 
             $view->with([
-                'tenantSchoolName' => $settings['school_name'] ?: 'Your School',
-                'tenantSchoolMotto' => $settings['motto'] ?? null,
+                'tenantSchoolName' => $settings->get('school_name') ?: 'Your School',
+                'tenantSchoolMotto' => $settings->get('motto'),
             ]);
         });
     }
