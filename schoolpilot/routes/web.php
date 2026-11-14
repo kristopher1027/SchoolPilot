@@ -21,6 +21,7 @@ use App\Http\Controllers\Tenant\TransportController;
 use App\Http\Controllers\Tenant\ReportController;
 use App\Http\Controllers\Tenant\ParentPortalController;
 use App\Http\Controllers\Tenant\SchoolWebsiteController;
+use App\Http\Controllers\Tenant\SchoolSettingsController;
 use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\RoleMiddleware;
 use App\Models\Tenant\AcademicSession;
@@ -185,6 +186,11 @@ Route::prefix('school/{school}')->group(function () {
         });
 
         Route::middleware(['auth:school', EnsureActiveUser::class])->group(function () {
+            Route::middleware(RoleMiddleware::class . ':school_admin')->group(function () {
+                Route::get('/settings', [SchoolSettingsController::class, 'edit']);
+                Route::put('/settings', [SchoolSettingsController::class, 'update']);
+            });
+
             Route::middleware(RoleMiddleware::class . ':school_admin,principal')->group(function () {
                 Route::get('/website/manage', [SchoolWebsiteController::class, 'adminIndex']);
                 Route::post('/website/settings', [SchoolWebsiteController::class, 'saveSettings']);
