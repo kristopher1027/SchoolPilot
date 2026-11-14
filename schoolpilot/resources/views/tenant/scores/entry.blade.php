@@ -1,12 +1,13 @@
 @extends('tenant.layouts.app')
 
 @section('content')
+    @php($schoolBase = '/school/' . request()->route('school'))
     <div class="mb-6 flex justify-between items-center">
         <div>
             <h3 class="text-2xl font-bold text-gray-800">Enter Scores</h3>
             <p class="text-gray-600">Class: {{ \App\Models\Tenant\SchoolClass::find($classId)->name }} | Subject: {{ \App\Models\Tenant\Subject::find($subjectId)->name }}</p>
         </div>
-        <a href="/school/greenfield/scores" class="text-blue-600 hover:underline">&larr; Back</a>
+        <a href="{{ $schoolBase }}/scores" class="text-blue-600 hover:underline">&larr; Back</a>
     </div>
 
     @if(session('success'))
@@ -28,7 +29,7 @@
         
         @if(!$approval || $approval->status === 'draft')
             <!-- SCORE ENTRY FORM -->
-            <form method="POST" action="/school/greenfield/scores/store">
+            <form method="POST" action="{{ $schoolBase }}/scores/store">
                 @csrf
                 <input type="hidden" name="class_id" value="{{ $classId }}">
                 <input type="hidden" name="subject_id" value="{{ $subjectId }}">
@@ -84,7 +85,7 @@
 
             <!-- SUBMIT FOR APPROVAL FORM (Separate Form) -->
             <div class="mt-6 flex justify-end">
-                <form method="POST" action="/school/greenfield/scores/submit">
+                <form method="POST" action="{{ $schoolBase }}/scores/submit">
                     @csrf
                     <input type="hidden" name="class_id" value="{{ $classId }}">
                     <input type="hidden" name="subject_id" value="{{ $subjectId }}">
