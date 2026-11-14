@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 font-sans antialiased">
+    @php($schoolBase = '/school/' . request()->route('school'))
     <div class="flex h-screen min-h-0 bg-gray-100">
         
         <!-- Sidebar -->
@@ -18,7 +19,7 @@
                 <a href="/school/{{ request()->route('school') }}/announcements" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Noticeboard</a>
 
                 {{-- Dashboard is for everyone --}}
-                <a href="/school/greenfield/dashboard" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Dashboard</a>
+                <a href="{{ $schoolBase }}/dashboard" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Dashboard</a>
 
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'dean']))
                     <a href="/school/{{ request()->route('school') }}/admissions" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Admissions</a>
@@ -26,7 +27,7 @@
 
                 {{-- Admin, Principal, Dean can see Students --}}
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'dean']))
-                    <a href="/school/greenfield/students" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Students</a>
+                    <a href="{{ $schoolBase }}/students" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Students</a>
                 @endif
 
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'dean']))
@@ -49,9 +50,9 @@
                 @endif
 
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal']))
-                    <a href="/school/greenfield/staff" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Staff</a>
-                    <a href="/school/greenfield/academic" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Classes & Subjects</a>
-                    <a href="/school/greenfield/assignments" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Teacher Assignments</a>
+                    <a href="{{ $schoolBase }}/staff" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Staff</a>
+                    <a href="{{ $schoolBase }}/academic" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Classes & Subjects</a>
+                    <a href="{{ $schoolBase }}/assignments" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Teacher Assignments</a>
                 @endif
 
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'bursar', 'librarian']))
@@ -92,12 +93,12 @@
 
                 {{-- Teachers, HOD, Dean, Admin, Principal can enter scores --}}
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'dean', 'hod', 'class_teacher', 'subject_teacher']))
-                    <a href="/school/greenfield/scores" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Score Entry</a>
+                    <a href="{{ $schoolBase }}/scores" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Score Entry</a>
                 @endif
 
                 {{-- Everyone except students can see Results (we will restrict further later) --}}
                 @if(in_array(Auth::user()->role, ['school_admin', 'principal', 'dean', 'hod', 'class_teacher']))
-                    <a href="/school/greenfield/results" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Results</a>
+                    <a href="{{ $schoolBase }}/results" class="block px-4 py-2 text-white font-medium opacity-100 bg-transparent hover:bg-blue-700 focus:bg-blue-700 focus:outline-none rounded-md transition-colors duration-150">Results</a>
                 @endif
 
                 {{-- Settings only for Admin --}}
@@ -118,7 +119,7 @@
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-sm text-gray-600 hidden sm:block">Logged in as: <strong>{{ Auth::user()->name }}</strong></span>
-                    <form method="POST" action="/school/greenfield/logout">
+                    <form method="POST" action="{{ $schoolBase }}/logout">
                         @csrf
                         <button type="submit" class="text-sm bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">Logout</button>
                     </form>
