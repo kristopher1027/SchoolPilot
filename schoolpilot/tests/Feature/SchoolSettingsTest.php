@@ -112,13 +112,16 @@ class SchoolSettingsTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_school_admin_can_view_and_update_school_profile(): void
+    public function test_school_admin_can_view_school_profile(): void
     {
         $this->get('/school/settings-test/settings')
             ->assertOk()
             ->assertSee('School Settings')
             ->assertSee('Original School');
+    }
 
+    public function test_school_admin_can_update_school_profile(): void
+    {
         $this->put('/school/settings-test/settings', [
             'school_name' => 'Bright Future Academy',
             'motto' => 'Learning for life',
