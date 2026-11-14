@@ -1,13 +1,14 @@
 @extends('tenant.layouts.app')
 
 @section('content')
+    @php($schoolBase = '/school/' . request()->route('school'))
     <div class="mb-6">
         <h3 class="text-2xl font-bold text-gray-800">Score Entry</h3>
         <p class="text-gray-600">Select a class and subject to enter scores.</p>
     </div>
 
     <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
-       <form method="GET" action="/school/greenfield/scores/entry">
+       <form method="GET" action="{{ $schoolBase }}/scores/entry">
     <!-- Remove the @csrf line -->
     <div class="space-y-4">
         <!-- rest of form stays the same -->
