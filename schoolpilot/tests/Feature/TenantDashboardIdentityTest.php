@@ -155,8 +155,11 @@ class TenantDashboardIdentityTest extends TestCase
             ->assertSee('/school/results-test/dashboard')
             ->assertSee('/school/results-test/students')
             ->assertSee('/school/results-test/logout')
+            ->assertDontSee('/school/greenfield');
+
+        $this->get('/school/results-test/dashboard')
+            ->assertOk()
             ->assertSee('Sunrise Academy today.')
-            ->assertDontSee('/school/greenfield')
             ->assertDontSee('Greenfield Academy');
     }
 }
