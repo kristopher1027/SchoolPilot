@@ -122,10 +122,18 @@ class TenantDashboardIdentityTest extends TestCase
             'updated_at' => now(),
         ]);
         DB::connection('tenant_sqlite')->table('settings')->insert([
-            'key' => 'school_name',
-            'value' => 'Sunrise Academy',
-            'created_at' => now(),
-            'updated_at' => now(),
+            [
+                'key' => 'school_name',
+                'value' => 'Sunrise Academy',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'key' => 'motto',
+                'value' => 'Learning today, leading tomorrow',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
 
         $this->actingAs(User::query()->findOrFail($this->adminId), 'school');
@@ -155,6 +163,7 @@ class TenantDashboardIdentityTest extends TestCase
         $this->get('/school/results-test/results')
             ->assertOk()
             ->assertSee('Sunrise Academy')
+            ->assertSee('Learning today, leading tomorrow')
             ->assertSee('/school/results-test/results/class')
             ->assertSee('/school/results-test/dashboard')
             ->assertSee('/school/results-test/students')

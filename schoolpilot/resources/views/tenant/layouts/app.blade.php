@@ -113,8 +113,11 @@
             
             <!-- Top Header -->
             <header class="h-16 bg-white shadow flex items-center justify-between px-6">
-                <div class="flex items-center">
-                    <h2 class="text-xl font-semibold text-gray-800">{{ $tenantSchoolName }}</h2>
+                <div class="flex min-w-0 flex-col justify-center">
+                    <h2 class="truncate text-xl font-semibold text-gray-800">{{ $tenantSchoolName }}</h2>
+                    @if(!empty($tenantSchoolMotto))
+                        <p class="truncate text-xs text-gray-500">{{ $tenantSchoolMotto }}</p>
+                    @endif
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-sm text-gray-600 hidden sm:block">Logged in as: <strong>{{ Auth::user()->name }}</strong></span>
