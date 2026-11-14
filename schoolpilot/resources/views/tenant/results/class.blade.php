@@ -2,6 +2,7 @@
 
 @section('content')
     @php($schoolBase = '/school/' . request()->route('school'))
+    @php($schoolBase = '/school/' . request()->route('school'))
     <div class="mb-6 flex justify-between items-center">
         <div>
             <h3 class="text-2xl font-bold text-gray-800">Result Sheet: {{ $class->name }}</h3>
