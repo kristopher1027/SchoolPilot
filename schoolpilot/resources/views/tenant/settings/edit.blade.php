@@ -18,12 +18,24 @@
             </ul>
         </div>
     @endif
-    <form method="POST" action="/school/{{ request()->route('school') }}/settings" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-5">
+    <form method="POST" enctype="multipart/form-data" action="/school/{{ request()->route('school') }}/settings" class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-5">
         @csrf
         @method('PUT')
         <div>
             <h2 class="text-lg font-semibold text-gray-900">School profile</h2>
             <p class="mt-1 text-sm text-gray-500">These details belong only to this school's database.</p>
+        </div>
+        <div class="rounded-lg border border-gray-200 p-4">
+            <label for="logo" class="mb-2 block text-sm font-medium text-gray-700">School logo</label>
+            @if($logoUrl)
+                <div class="mb-3 flex items-center gap-3">
+                    <img src="{{ $logoUrl }}" alt="Current school logo" class="h-16 w-16 rounded-lg border border-gray-200 object-contain p-1">
+                    <p class="text-sm text-gray-500">Current logo</p>
+                </div>
+            @endif
+            <input id="logo" type="file" name="logo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="block w-full text-sm text-gray-700">
+            <p class="mt-1 text-xs text-gray-500">PNG, JPG or WebP. Maximum size: 2 MB.</p>
+            @error('logo')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
         </div>
         <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
             <div class="md:col-span-2">

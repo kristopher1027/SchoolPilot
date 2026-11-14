@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class SchoolSettingsTest extends TestCase
@@ -135,6 +137,24 @@ class SchoolSettingsTest extends TestCase
 
         $this->assertDatabaseHas('settings', ['key' => 'school_name', 'value' => 'Bright Future Academy'], 'tenant_sqlite');
         $this->assertDatabaseHas('settings', ['key' => 'motto', 'value' => 'Learning for life'], 'tenant_sqlite');
+    }
+
+    public function test_school_admin_can_upload_a_tenant_scoped_logo(): void
+    {
+        Storage::fake('public');
+
+        $this->put('/school/settings-test/settings', [
+            'school_name' => 'Original School',
+            'logo' => UploadedFile::fake()->image('school-logo.png'),
+        ])->assertRedirect('/school/settings-test/settings')
+          ->assertSessionHas('success');
+
+        $logoPath = DB::connection('tenant_sqlite')->table('settings')
+            ->where('key', 'logo_path')
+            ->value('value');
+
+        $this->assertSame('schools/settings-test/logo.png', $logoPath);
+        Storage::disk('public')->assertExists($logoPath);
     }
 
     public function test_required_name_and_email_validation_are_enforced(): void
