@@ -1,6 +1,7 @@
 @extends('tenant.layouts.app')
 
 @section('content')
+    @php($schoolBase = '/school/' . request()->route('school'))
     <div class="mb-6">
         <h3 class="text-2xl font-bold text-gray-800">Teacher Assignments</h3>
         <p class="text-gray-600">Assign teachers to classes and subjects.</p>
@@ -17,7 +18,7 @@
         <!-- Assignment Form -->
         <div class="bg-white rounded-lg shadow p-6 lg:col-span-1 h-fit">
             <h4 class="text-lg font-bold text-gray-800 mb-4">New Assignment</h4>
-            <form method="POST" action="/school/greenfield/assignments" class="space-y-4">
+            <form method="POST" action="{{ $schoolBase }}/assignments" class="space-y-4">
                 @csrf
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Teacher</label>
