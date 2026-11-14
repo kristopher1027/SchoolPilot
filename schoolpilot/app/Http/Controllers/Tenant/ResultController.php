@@ -14,6 +14,7 @@ use App\Models\Tenant\GradingBand;
 use App\Models\Tenant\Staff;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ResultController extends Controller
 {
@@ -22,7 +23,9 @@ class ResultController extends Controller
         $classes = SchoolClass::all();
         $terms = Term::all();
         $sessions = AcademicSession::all();
-        return view('tenant.results.index', compact('classes', 'terms', 'sessions'));
+        $schoolProfile = DB::table('settings')->pluck('value', 'key');
+
+        return view('tenant.results.index', compact('classes', 'terms', 'sessions', 'schoolProfile'));
     }
 
     public function classResults(Request $request)
@@ -96,7 +99,9 @@ class ResultController extends Controller
             $result['position'] = $position;
         }
 
-        return view('tenant.results.class', compact('results', 'class', 'termId', 'sessionId'));
+        $schoolProfile = DB::table('settings')->pluck('value', 'key');
+
+        return view('tenant.results.class', compact('results', 'class', 'termId', 'sessionId', 'schoolProfile'));
     }
 
     public function approve(Request $request)
@@ -203,6 +208,8 @@ class ResultController extends Controller
         $term = Term::find($termId);
         $session = AcademicSession::find($sessionId);
 
-        return view('tenant.results.report_card', compact('student', 'class', 'subjectScores', 'totalScore', 'term', 'session', 'approval'));
+        $schoolProfile = DB::table('settings')->pluck('value', 'key');
+
+        return view('tenant.results.report_card', compact('student', 'class', 'subjectScores', 'totalScore', 'term', 'session', 'approval', 'schoolProfile'));
     }
 }
