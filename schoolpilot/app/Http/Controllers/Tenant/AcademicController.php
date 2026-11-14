@@ -86,8 +86,10 @@ class AcademicController extends Controller
         return back()->with('success', 'Term created successfully.');
     }
 
-    public function setCurrentSession(AcademicSession $session)
+    public function setCurrentSession(string $session)
     {
+        $session = AcademicSession::findOrFail($session);
+
         DB::transaction(function () use ($session): void {
             AcademicSession::query()->update(['is_current' => false]);
             Term::query()->update(['is_current' => false]);
@@ -97,9 +99,9 @@ class AcademicController extends Controller
         return back()->with('success', 'Current academic session updated successfully.');
     }
 
-    public function setCurrentTerm(Term $term)
+    public function setCurrentTerm(string $term)
     {
-        $term->loadMissing('academicSession');
+        $term = Term::with('academicSession')->findOrFail($term);
 
         if (! $term->academicSession || ! $term->academicSession->is_current) {
             throw ValidationException::withMessages([
