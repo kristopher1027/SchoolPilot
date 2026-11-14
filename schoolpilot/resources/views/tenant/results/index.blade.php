@@ -5,6 +5,7 @@
     <div class="mb-6">
         <h3 class="text-2xl font-bold text-gray-800">Results Engine</h3>
         <p class="text-gray-600">Select a class to generate result sheets.</p>
+        @if(!empty($schoolProfile['school_name']))<p class="text-sm text-gray-500 mt-1">{{ $schoolProfile['school_name'] }}</p>@endif
     </div>
 
     <div class="bg-white rounded-lg shadow p-6 max-w-2xl">
