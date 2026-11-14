@@ -34,6 +34,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
 Route::get('/', function () {
     return view('landing');
@@ -248,7 +249,9 @@ Route::prefix('school/{school}')->group(function () {
                 ])->count();
                 $totalClasses = SchoolClass::count();
                 $currentSession = AcademicSession::where('is_current', true)->first();
-                $schoolName = DB::table('settings')->where('key', 'school_name')->value('value');
+                $schoolName = Schema::connection('tenant_sqlite')->hasTable('settings')
+                    ? DB::connection('tenant_sqlite')->table('settings')->where('key', 'school_name')->value('value')
+                    : null;
 
                 return view('tenant.dashboard', compact(
                     'totalStudents',
