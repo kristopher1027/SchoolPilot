@@ -113,11 +113,16 @@
             
             <!-- Top Header -->
             <header class="h-16 bg-white shadow flex items-center justify-between px-6">
-                <div class="flex min-w-0 flex-col justify-center">
+                <div class="flex min-w-0 items-center gap-3">
+                    @if(!empty($tenantSchoolLogoUrl))
+                        <img src="{{ $tenantSchoolLogoUrl }}" alt="{{ $tenantSchoolName }} logo" class="h-10 w-10 shrink-0 rounded-lg border border-gray-200 bg-white object-contain p-1">
+                    @endif
+                    <div class="flex min-w-0 flex-col justify-center">
                     <h2 class="truncate text-xl font-semibold text-gray-800">{{ $tenantSchoolName }}</h2>
                     @if(!empty($tenantSchoolMotto))
                         <p class="truncate text-xs text-gray-500">{{ $tenantSchoolMotto }}</p>
                     @endif
+                    </div>
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-sm text-gray-600 hidden sm:block">Logged in as: <strong>{{ Auth::user()->name }}</strong></span>
