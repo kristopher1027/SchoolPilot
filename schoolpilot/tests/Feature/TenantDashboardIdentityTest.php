@@ -92,6 +92,10 @@ class TenantDashboardIdentityTest extends TestCase
             $table->boolean('is_current')->default(false);
             $table->timestamps();
         });
+        // The dashboard counts students; this focused test only needs the table to exist.
+        Schema::connection('tenant_sqlite')->create('students', function (Blueprint $table): void {
+            $table->id();
+        });
         Schema::connection('tenant_sqlite')->create('sections', function (Blueprint $table): void {
             $table->id();
             $table->string('name');
