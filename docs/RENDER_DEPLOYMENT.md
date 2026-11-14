@@ -32,6 +32,7 @@ Set these environment variables in Render:
 | `DB_CONNECTION` | `central_sqlite` |
 | `DB_DATABASE` | `/var/data/schoolpilot/central.sqlite` |
 | `SCHOOLPILOT_TENANT_DATABASE_PATH` | `/var/data/schoolpilot/tenants` |
+| `SCHOOLPILOT_PUBLIC_STORAGE_PATH` | `/var/data/schoolpilot/public` |
 | `SESSION_DRIVER` | `database` |
 | `SESSION_CONNECTION` | `central_sqlite` |
 | `CACHE_STORE` | `database` |
@@ -88,7 +89,7 @@ The command securely prompts for and confirms a temporary administrator password
 
 This database-per-school SQLite deployment is intended for a single application instance with persistent disk storage. Do not scale the Render service horizontally across multiple instances sharing SQLite files. For multi-instance/high-concurrency production, plan a migration to a managed database service (for example, PostgreSQL) and a tenant database strategy designed for concurrent access.
 
-Uploaded school files currently use Laravel's local filesystem. If schools need uploaded files to survive deploys, configure a persistent upload disk or object storage (such as S3-compatible storage) before relying on file uploads in production.
+School logos use Laravel's public filesystem disk. The container entrypoint links `storage/app/public` to `/var/data/schoolpilot/public` on the persistent disk and recreates Laravel's public storage link on startup. Keep the Render disk mounted at `/var/data`; uploaded logos then survive redeploys. Each school's logo is stored under `schools/{school-slug}/`, and its relative path is saved in that school's own settings database.
 
 ## Release process
 
