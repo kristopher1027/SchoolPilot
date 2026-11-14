@@ -22,6 +22,7 @@ class AcademicCalendarTest extends TestCase
     private string $previousDefaultConnection;
     private string $previousTenantDirectory;
     private bool $createdTenantDirectory = false;
+    private int $adminId;
 
     protected function setUp(): void
     {
@@ -112,7 +113,7 @@ class AcademicCalendarTest extends TestCase
         Config::set('database.default', 'tenant_sqlite');
         DB::setDefaultConnection('tenant_sqlite');
 
-        $adminId = DB::connection('tenant_sqlite')->table('users')->insertGetId([
+        $this->adminId = DB::connection('tenant_sqlite')->table('users')->insertGetId([
             'name' => 'Academic Administrator',
             'email' => 'academic-admin@example.test',
             'password' => Hash::make('Secure-Test-Password-2026'),
@@ -121,7 +122,7 @@ class AcademicCalendarTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        $this->actingAs(User::query()->findOrFail($adminId), 'school');
+        $this->loginAdmin();
         $this->withSession(['_school_authenticated_slug' => 'academic-test']);
     }
 
@@ -141,6 +142,11 @@ class AcademicCalendarTest extends TestCase
         }
 
         parent::tearDown();
+    }
+
+    private function loginAdmin(): void
+    {
+        $this->actingAs(User::query()->findOrFail($this->adminId), 'school');
     }
 
     public function test_academic_page_uses_the_current_school_slug_in_form_actions(): void
@@ -192,6 +198,7 @@ class AcademicCalendarTest extends TestCase
         ])->assertRedirect('/school/academic-test/academic')
           ->assertSessionHasErrors(['start_date']);
 
+        $this->loginAdmin();
         $this->post('/school/academic-test/academic/terms', [
             'academic_session_id' => $session->id,
             'name' => 'First Term',
@@ -200,6 +207,7 @@ class AcademicCalendarTest extends TestCase
         ])->assertRedirect('/school/academic-test/academic')
           ->assertSessionHasNoErrors();
 
+        $this->loginAdmin();
         $this->from('/school/academic-test/academic')->post('/school/academic-test/academic/terms', [
             'academic_session_id' => $session->id,
             'name' => 'Second Term',
@@ -245,6 +253,7 @@ class AcademicCalendarTest extends TestCase
         $this->assertDatabaseHas('academic_sessions', ['id' => $second->id, 'is_current' => 1], 'tenant_sqlite');
         $this->assertDatabaseHas('terms', ['id' => $firstTerm->id, 'is_current' => 0], 'tenant_sqlite');
 
+        $this->loginAdmin();
         $this->post('/school/academic-test/academic/terms/' . $secondTerm->id . '/current')
             ->assertRedirect();
 
