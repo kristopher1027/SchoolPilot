@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 
 class AppServiceProvider extends ServiceProvider
@@ -32,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
             $view->with([
                 'tenantSchoolName' => $settings->get('school_name') ?: 'Your School',
                 'tenantSchoolMotto' => $settings->get('motto'),
+                'tenantSchoolLogoUrl' => $settings->get('logo_path')
+                    ? Storage::disk('public')->url($settings->get('logo_path'))
+                    : null,
             ]);
         });
     }
