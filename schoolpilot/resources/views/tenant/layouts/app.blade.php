@@ -114,8 +114,7 @@
             <!-- Top Header -->
             <header class="h-16 bg-white shadow flex items-center justify-between px-6">
                 <div class="flex items-center">
-                    <!-- Hardcoded school name for now -->
-                    <h2 class="text-xl font-semibold text-gray-800">Greenfield Academy</h2>
+                    <h2 class="text-xl font-semibold text-gray-800">{{ $tenantSchoolName }}</h2>
                 </div>
                 <div class="flex items-center space-x-4">
                     <span class="text-sm text-gray-600 hidden sm:block">Logged in as: <strong>{{ Auth::user()->name }}</strong></span>
