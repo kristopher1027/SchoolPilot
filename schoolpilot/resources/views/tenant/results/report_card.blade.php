@@ -26,8 +26,10 @@
         @endif
 
         <div class="text-center border-b-2 border-gray-800 pb-4 mb-6">
-            <h1 class="text-3xl font-bold text-gray-800">GREENFIELD ACADEMY</h1>
-            <p class="text-sm text-gray-500">123 School Road, Lagos, Nigeria</p>
+            <h1 class="text-3xl font-bold text-gray-800">{{ $schoolProfile['school_name'] ?? config('app.name', 'SchoolPilot') }}</h1>
+            @if(!empty($schoolProfile['motto']))<p class="text-sm text-gray-600">{{ $schoolProfile['motto'] }}</p>@endif
+            @if(!empty($schoolProfile['address']))<p class="text-sm text-gray-500">{{ $schoolProfile['address'] }}</p>@endif
+            @if(!empty($schoolProfile['email']) || !empty($schoolProfile['phone']))<p class="text-sm text-gray-500">{{ $schoolProfile['email'] ?? '' }} @if(!empty($schoolProfile['email']) && !empty($schoolProfile['phone'])) · @endif {{ $schoolProfile['phone'] ?? '' }}</p>@endif
             <h2 class="text-xl font-semibold text-gray-700 mt-2">TERM REPORT CARD</h2>
         </div>
 

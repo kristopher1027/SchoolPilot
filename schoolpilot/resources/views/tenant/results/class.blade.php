@@ -1,12 +1,13 @@
 @extends('tenant.layouts.app')
 
 @section('content')
+    @php($schoolBase = '/school/' . request()->route('school'))
     <div class="mb-6 flex justify-between items-center">
         <div>
             <h3 class="text-2xl font-bold text-gray-800">Result Sheet: {{ $class->name }}</h3>
             <p class="text-gray-600">Positions calculated automatically.</p>
         </div>
-        <a href="/school/greenfield/results" class="text-blue-600 hover:underline">&larr; Back</a>
+        <a href="{{ $schoolBase }}/results" class="text-blue-600 hover:underline">&larr; Back</a>
     </div>
 
     @if(session('success'))
@@ -47,7 +48,7 @@
                                 <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs uppercase">{{ str_replace('_', ' ', $approval->status) }}</span>
                                 <br>
                                 @if(Auth::user()->role === 'class_teacher' && $approval->status === 'class_teacher_pending')
-                                    <form method="POST" action="/school/greenfield/results/approve" class="mt-2 inline">@csrf
+                                    <form method="POST" action="{{ $schoolBase }}/results/approve" class="mt-2 inline">@csrf
                                         <input type="hidden" name="student_id" value="{{ $res['student']->id }}">
                                         <input type="hidden" name="term_id" value="{{ $termId }}">
                                         <input type="hidden" name="session_id" value="{{ $sessionId }}">
@@ -55,7 +56,7 @@
                                     </form>
                                 @endif
                             @endif
-                            <a href="/school/greenfield/results/report-card/{{ $res['student']->id }}?term_id={{ $termId }}&session_id={{ $sessionId }}" class="text-blue-600 hover:underline block mt-1 text-xs">View Report Card</a>
+                            <a href="{{ $schoolBase }}/results/report-card/{{ $res['student']->id }}?term_id={{ $termId }}&session_id={{ $sessionId }}" class="text-blue-600 hover:underline block mt-1 text-xs">View Report Card</a>
                         </td>
                     </tr>
                 @endforeach
