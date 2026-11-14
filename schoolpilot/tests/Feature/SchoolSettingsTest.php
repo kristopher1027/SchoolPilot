@@ -18,6 +18,7 @@ class SchoolSettingsTest extends TestCase
     private string $previousCentralDatabase;
     private string $previousTenantDatabase;
     private string $previousDefaultConnection;
+    private string $previousTenantDirectory;
     private bool $createdTenantDirectory = false;
 
     protected function setUp(): void
@@ -34,6 +35,8 @@ class SchoolSettingsTest extends TestCase
         $this->previousCentralDatabase = (string) config('database.connections.central_sqlite.database');
         $this->previousTenantDatabase = (string) config('database.connections.tenant_sqlite.database');
         $this->previousDefaultConnection = DB::getDefaultConnection();
+        $this->previousTenantDirectory = (string) config('tenancy.database.sqlite.path');
+        Config::set('tenancy.database.sqlite.path', $this->tenantDirectory);
 
         Config::set('session.driver', 'array');
         Config::set('database.connections.central_sqlite.database', ':memory:');
@@ -98,6 +101,7 @@ class SchoolSettingsTest extends TestCase
         DB::purge('central_sqlite');
         Config::set('database.connections.central_sqlite.database', $this->previousCentralDatabase);
         Config::set('database.connections.tenant_sqlite.database', $this->previousTenantDatabase);
+        Config::set('tenancy.database.sqlite.path', $this->previousTenantDirectory);
         DB::setDefaultConnection($this->previousDefaultConnection);
 
         @unlink($this->tenantDirectory . '/' . $this->databaseName);
