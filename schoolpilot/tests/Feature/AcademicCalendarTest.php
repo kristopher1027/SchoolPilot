@@ -173,6 +173,7 @@ class AcademicCalendarTest extends TestCase
             'is_current' => false,
         ]);
 
+        $this->loginAdmin();
         $this->from('/school/academic-test/academic')->post('/school/academic-test/academic/sessions', [
             'name' => '2026/2027',
             'start_date' => '2026-09-01',
