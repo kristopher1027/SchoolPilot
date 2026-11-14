@@ -109,6 +109,9 @@ class AcademicCalendarTest extends TestCase
             $table->timestamps();
         });
 
+        Config::set('database.default', 'tenant_sqlite');
+        DB::setDefaultConnection('tenant_sqlite');
+
         $adminId = DB::connection('tenant_sqlite')->table('users')->insertGetId([
             'name' => 'Academic Administrator',
             'email' => 'academic-admin@example.test',
