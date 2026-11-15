@@ -43,6 +43,17 @@ class BackupSchoolPilotCommand extends Command
         $central = (string) config('database.connections.central_sqlite.database');
         $tenantDirectory = (string) config('tenancy.database.sqlite.path', database_path('tenants'));
         $publicDirectory = (string) config('filesystems.disks.public.root', storage_path('app/public'));
+        $realParent = realpath($parent);
+
+        foreach ([dirname($central), $tenantDirectory, $publicDirectory] as $sourceDirectory) {
+            $realSource = realpath($sourceDirectory);
+            if ($realParent !== false && $realSource !== false
+                && ($realParent === $realSource || str_starts_with($realParent.DIRECTORY_SEPARATOR, rtrim($realSource, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR))) {
+                $this->error('The backup destination must be outside the central database, tenant database, and public upload directories.');
+
+                return self::FAILURE;
+            }
+        }
 
         if (! is_file($central)) {
             $this->error('The configured central SQLite database does not exist.');
