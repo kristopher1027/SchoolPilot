@@ -12,14 +12,16 @@ class BackupSchoolPilotCommandTest extends TestCase
     public function test_backup_contains_consistent_central_and_tenant_database_snapshots_uploads_and_manifest(): void
     {
         $root = sys_get_temp_dir().DIRECTORY_SEPARATOR.'schoolpilot-backup-test-'.bin2hex(random_bytes(6));
+        $centralDirectory = $root.'/central';
         $tenantDirectory = $root.'/tenants';
         $publicDirectory = $root.'/public';
         $destinationDirectory = $root.'/exports';
+        File::ensureDirectoryExists($centralDirectory);
         File::ensureDirectoryExists($tenantDirectory);
         File::ensureDirectoryExists($publicDirectory);
         File::ensureDirectoryExists($destinationDirectory);
 
-        $central = $root.'/central.sqlite';
+        $central = $centralDirectory.'/central.sqlite';
         $tenant = $tenantDirectory.'/greenfield.sqlite';
         foreach ([$central, $tenant] as $database) {
             $pdo = new PDO('sqlite:'.$database);
