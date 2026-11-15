@@ -1,10 +1,10 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use Illuminate\\Support\\Facades\\File;
+use Illuminate\Support\Facades\File;
 use PDO;
-use Tests\\TestCase;
+use Tests\TestCase;
 use ZipArchive;
 
 class BackupSchoolPilotCommandTest extends TestCase
