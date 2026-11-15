@@ -98,3 +98,30 @@ School logos use Laravel's public filesystem disk. The container entrypoint link
 3. Inspect startup logs before testing login.
 4. Run the smoke checks above.
 5. If a deploy fails, keep the previous known-good deploy available and inspect logs before retrying. Do not delete or recreate the persistent disk to fix an application error.
+
+
+## Creating and verifying a SchoolPilot backup
+
+The application includes an Artisan command that creates a ZIP archive containing a consistent SQLite snapshot of the central registry, every regular `.sqlite` tenant database in the configured tenant directory, public uploads, and a SHA-256 manifest.
+
+**Do not attach, detach, resize, or reconfigure the Render disk until you have created and downloaded a backup of the current live data.** The command does not recover files that have already disappeared from an ephemeral container filesystem.
+
+Run this from the running Render service's Shell (if Shell access is available). First choose a destination on a filesystem with enough free space and which you can retrieve securely. For example:
+
+```sh
+mkdir -p /tmp/schoolpilot-export
+php artisan schoolpilot:backup --destination=/tmp/schoolpilot-export/schoolpilot-before-disk-change.zip
+```
+
+The destination directory must already exist, the destination must be an absolute path, and the archive must not already exist. The command does not upload the archive anywhere. Download or securely transfer the archive off the Render instance before making infrastructure changes; files under `/tmp` and the container filesystem are not durable across deploys or instance replacement. If Render Shell or a secure download/transfer path is unavailable, stop and arrange a secure backup destination before proceeding.
+
+After retrieving the archive, verify it on a trusted machine:
+
+1. Confirm the ZIP opens successfully.
+2. Confirm `manifest.json` is present.
+3. Extract the archive to a protected location and compare SHA-256 hashes of each listed file with the corresponding `files_sha256` value in the manifest.
+4. Keep at least one copy outside Render, restrict access because it contains student and staff data, and retain the archive until a restore has been tested.
+
+The archive contains sensitive, unencrypted database and upload data. Store and transfer it only through a private, access-controlled channel. Do not place it in the public web root, commit it to GitHub, or share it in chat. This command creates a one-time backup; it does not schedule recurring backups or automatically transfer files to off-site storage.
+
+A backup is not proven until a restore has been tested. Perform restore tests against a separate, isolated environment and never overwrite live school data during a test.
