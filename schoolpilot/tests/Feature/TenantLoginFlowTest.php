@@ -13,6 +13,7 @@ use Tests\TestCase;
 class TenantLoginFlowTest extends TestCase
 {
     private string $tenantDirectory;
+    private string $previousConfiguredTenantDirectory;
     private string $alphaDatabase;
     private string $betaDatabase;
     private string $previousCentralDatabase;
@@ -25,11 +26,11 @@ class TenantLoginFlowTest extends TestCase
         parent::setUp();
 
         $token = bin2hex(random_bytes(6));
-        $this->tenantDirectory = database_path('tenants');
-        if (! is_dir($this->tenantDirectory)) {
-            mkdir($this->tenantDirectory, 0700, true);
-            $this->createdTenantDirectory = true;
-        }
+        $this->tenantDirectory = sys_get_temp_dir() . '/schoolpilot-login-tenants-' . $token;
+        mkdir($this->tenantDirectory, 0700, true);
+        $this->createdTenantDirectory = true;
+        $this->previousConfiguredTenantDirectory = (string) config('tenancy.database.sqlite.path');
+        Config::set('tenancy.database.sqlite.path', $this->tenantDirectory);
 
         $this->alphaDatabase = 'login-alpha-' . $token . '.sqlite';
         $this->betaDatabase = 'login-beta-' . $token . '.sqlite';
@@ -57,6 +58,7 @@ class TenantLoginFlowTest extends TestCase
         DB::purge('central_sqlite');
 
         Config::set('database.connections.central_sqlite.database', $this->previousCentralDatabase);
+        Config::set('tenancy.database.sqlite.path', $this->previousConfiguredTenantDirectory);
         Config::set('database.connections.tenant_sqlite.database', $this->previousTenantDatabase);
         DB::setDefaultConnection($this->previousDefaultConnection);
 
@@ -87,7 +89,7 @@ class TenantLoginFlowTest extends TestCase
 
     public function test_same_credentials_in_multiple_active_schools_are_rejected_as_ambiguous(): void
     {
-        $databasePath = database_path('tenants/' . $this->betaDatabase);
+        $databasePath = $this->tenantDirectory . '/' . $this->betaDatabase;
         Config::set('database.connections.tenant_sqlite.database', $databasePath);
         DB::purge('tenant_sqlite');
 

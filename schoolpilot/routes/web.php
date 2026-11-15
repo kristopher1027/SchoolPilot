@@ -54,6 +54,7 @@ Route::post('/login', function (Request $request) {
     ]);
 
     $email = strtolower(trim($credentials['email']));
+    $tenantDirectory = rtrim((string) Config::get('tenancy.database.sqlite.path', database_path('tenants')), DIRECTORY_SEPARATOR);
     $matches = [];
 
     // Read only registered, active tenant metadata from the central database.
@@ -76,7 +77,7 @@ Route::post('/login', function (Request $request) {
             continue;
         }
 
-        $databasePath = database_path('tenants/' . $databaseName);
+        $databasePath = $tenantDirectory . DIRECTORY_SEPARATOR . $databaseName;
         if (! is_file($databasePath)) {
             continue;
         }
@@ -100,7 +101,7 @@ Route::post('/login', function (Request $request) {
         $metadata = json_decode($tenant->data ?? '{}', true);
         return is_array($metadata) && ($metadata['slug'] ?? null) === 'greenfield';
     })) {
-        $legacyDatabase = database_path('tenants/greenfield.sqlite');
+        $legacyDatabase = $tenantDirectory . DIRECTORY_SEPARATOR . 'greenfield.sqlite';
         if (is_file($legacyDatabase)) {
             Config::set('database.connections.tenant_sqlite.database', $legacyDatabase);
             DB::purge('tenant_sqlite');
@@ -126,13 +127,13 @@ Route::post('/login', function (Request $request) {
     }
 
     $match = $matches[0];
-    $databasePath = database_path('tenants/' . $match['slug'] . '.sqlite');
+    $databasePath = $tenantDirectory . DIRECTORY_SEPARATOR . $match['slug'] . '.sqlite';
 
     // Resolve the registered database filename rather than trusting the URL slug.
     foreach ($registeredTenants as $registeredTenant) {
         $metadata = json_decode($registeredTenant->data ?? '{}', true);
         if (is_array($metadata) && ($metadata['slug'] ?? null) === $match['slug']) {
-            $databasePath = database_path('tenants/' . $metadata['db_name']);
+            $databasePath = $tenantDirectory . DIRECTORY_SEPARATOR . $metadata['db_name'];
             break;
         }
     }
