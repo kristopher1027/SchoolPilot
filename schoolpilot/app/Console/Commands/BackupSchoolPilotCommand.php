@@ -1,8 +1,8 @@
 <?php
 
-namespace App\\Console\\Commands;
+namespace App\Console\Commands;
 
-use Illuminate\\Console\\Command;
+use Illuminate\Console\Command;
 use PDO;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
@@ -132,7 +132,7 @@ class BackupSchoolPilotCommand extends Command
             $this->info('Databases: '.count($files).'; upload files: '.count(array_filter(array_keys($manifestFiles), fn ($path) => str_starts_with($path, 'public/'))));
 
             return self::SUCCESS;
-        } catch (\\Throwable $exception) {
+        } catch (\Throwable $exception) {
             if (is_file($destination)) {
                 @unlink($destination);
             }
