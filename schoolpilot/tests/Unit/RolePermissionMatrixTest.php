@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
@@ -15,7 +16,7 @@ class RolePermissionMatrixTest extends TestCase
      *
      * @return array<string, list<string>>
      */
-    private function permissions(): array
+    private static function permissions(): array
     {
         return [
             'dashboard' => ['school_admin', 'principal', 'vice_principal', 'dean', 'hod', 'class_teacher', 'subject_teacher', 'bursar'],
@@ -35,55 +36,71 @@ class RolePermissionMatrixTest extends TestCase
         ];
     }
 
-    public function test_every_role_in_the_permission_baseline_is_allowed_for_its_module(): void
+    /**
+     * @return array<string, array{string, string, list<string>}>
+     */
+    public static function allowedRoleCases(): array
     {
-        foreach ($this->permissions() as $module => $allowedRoles) {
-            foreach ($allowedRoles as $role) {
-                $this->assertRoleDecision($role, $allowedRoles, true, $module);
+        $cases = [];
+        foreach (self::permissions() as $module => $roles) {
+            foreach ($roles as $role) {
+                $cases[$module . '__' . $role] = [$module, $role, $roles];
             }
         }
+
+        return $cases;
     }
 
-    public function test_roles_outside_each_module_allowlist_are_forbidden(): void
+    /**
+     * @return array<string, array{string, string, list<string>}>
+     */
+    public static function forbiddenRoleCases(): array
     {
         $allRoles = [
             'school_admin', 'principal', 'vice_principal', 'dean', 'hod',
             'class_teacher', 'subject_teacher', 'bursar', 'parent', 'librarian',
         ];
+        $cases = [];
 
-        foreach ($this->permissions() as $module => $allowedRoles) {
+        foreach (self::permissions() as $module => $allowedRoles) {
             foreach (array_diff($allRoles, $allowedRoles) as $role) {
-                $this->assertRoleDecision($role, $allowedRoles, false, $module);
+                $cases[$module . '__' . $role] = [$module, $role, $allowedRoles];
             }
         }
+
+        return $cases;
     }
 
-    private function assertRoleDecision(string $role, array $allowedRoles, bool $allowed, string $module): void
+    #[DataProvider('allowedRoleCases')]
+    public function test_allowed_role_can_access_its_module(string $module, string $role, array $allowedRoles): void
     {
-        Auth::clearResolvedInstances();
-
         $guard = \Mockery::mock();
         $guard->shouldReceive('user')->once()->andReturn((object) ['role' => $role]);
         Auth::shouldReceive('guard')->once()->with('school')->andReturn($guard);
 
-        $nextCalled = false;
+        $response = (new RoleMiddleware())->handle(
+            Request::create('/school/example/' . $module),
+            fn () => response('allowed'),
+            ...$allowedRoles
+        );
 
-        try {
-            (new RoleMiddleware())->handle(
-                Request::create('/school/example/' . $module),
-                function () use (&$nextCalled) {
-                    $nextCalled = true;
-                    return response('allowed');
-                },
-                ...$allowedRoles
-            );
+        $this->assertSame('allowed', $response->getContent());
+    }
 
-            $this->assertTrue($allowed, sprintf('Role %s unexpectedly accessed %s.', $role, $module));
-            $this->assertTrue($nextCalled);
-        } catch (HttpException $exception) {
-            $this->assertFalse($allowed, sprintf('Role %s was unexpectedly denied %s.', $role, $module));
-            $this->assertSame(403, $exception->getStatusCode());
-            $this->assertFalse($nextCalled);
-        }
+    #[DataProvider('forbiddenRoleCases')]
+    public function test_role_outside_module_allowlist_is_forbidden(string $module, string $role, array $allowedRoles): void
+    {
+        $guard = \Mockery::mock();
+        $guard->shouldReceive('user')->once()->andReturn((object) ['role' => $role]);
+        Auth::shouldReceive('guard')->once()->with('school')->andReturn($guard);
+
+        $this->expectException(HttpException::class);
+        $this->expectExceptionCode(403);
+
+        (new RoleMiddleware())->handle(
+            Request::create('/school/example/' . $module),
+            fn () => response('must not be reached'),
+            ...$allowedRoles
+        );
     }
 }
