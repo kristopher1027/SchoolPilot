@@ -212,6 +212,20 @@ class SchoolCreateCommandTest extends TestCase
             $this->assertSame('school_admin', $administrator->role);
             $this->assertTrue(\Illuminate\Support\Facades\Hash::check('Secure-Test-Password-2026', $administrator->password));
             $connection = DB::connection('tenant_sqlite');
+            $connection->table('users')->insert([
+                'name' => 'Library Staff',
+                'email' => 'librarian@integration-school.test',
+                'password' => \Illuminate\Support\Facades\Hash::make('Library-Staff-Password-2026'),
+                'role' => 'librarian',
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $this->assertSame(
+                'librarian',
+                $connection->table('users')->where('email', 'librarian@integration-school.test')->value('role')
+            );
+
             $this->assertSame('Integration School', $connection->table('settings')->where('key', 'school_name')->value('value'));
 
             $this->assertSame(['NURSERY', 'PRIMARY', 'SECONDARY'], $connection->table('sections')->orderBy('id')->pluck('code')->all());
