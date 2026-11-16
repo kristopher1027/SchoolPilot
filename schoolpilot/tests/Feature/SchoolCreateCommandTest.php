@@ -215,7 +215,7 @@ class SchoolCreateCommandTest extends TestCase
             $connection->table('users')->insert([
                 'name' => 'Library Staff',
                 'email' => 'librarian@integration-school.test',
-                'password' => \\Illuminate\\Support\\Facades\\Hash::make('Library-Staff-Password-2026'),
+                'password' => \Illuminate\Support\Facades\Hash::make('Library-Staff-Password-2026'),
                 'role' => 'librarian',
                 'is_active' => true,
                 'created_at' => now(),
