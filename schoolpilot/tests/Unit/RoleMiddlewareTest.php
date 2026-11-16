@@ -59,7 +59,7 @@ class RoleMiddlewareTest extends TestCase
 
     public function test_librarian_role_can_access_library_routes(): void
     {
-        $guard = \\Mockery::mock();
+        $guard = \Mockery::mock();
         $guard->shouldReceive('user')->once()->andReturn((object) ['role' => 'librarian']);
         Auth::shouldReceive('guard')->once()->with('school')->andReturn($guard);
 
