@@ -36,9 +36,7 @@ class RolePermissionMatrixTest extends TestCase
         ];
     }
 
-    /**
-     * @return array<string, array{string, string, list<string>}>
-     */
+    /** @return array<string, array{string, string, list<string>}> */
     public static function allowedRoleCases(): array
     {
         $cases = [];
@@ -51,9 +49,7 @@ class RolePermissionMatrixTest extends TestCase
         return $cases;
     }
 
-    /**
-     * @return array<string, array{string, string, list<string>}>
-     */
+    /** @return array<string, array{string, string, list<string>}> */
     public static function forbiddenRoleCases(): array
     {
         $allRoles = [
@@ -94,13 +90,16 @@ class RolePermissionMatrixTest extends TestCase
         $guard->shouldReceive('user')->once()->andReturn((object) ['role' => $role]);
         Auth::shouldReceive('guard')->once()->with('school')->andReturn($guard);
 
-        $this->expectException(HttpException::class);
-        $this->expectExceptionCode(403);
-
-        (new RoleMiddleware())->handle(
-            Request::create('/school/example/' . $module),
-            fn () => response('must not be reached'),
-            ...$allowedRoles
-        );
+        try {
+            (new RoleMiddleware())->handle(
+                Request::create('/school/example/' . $module),
+                fn () => response('must not be reached'),
+                ...$allowedRoles
+            );
+            $this->fail(sprintf('Role %s unexpectedly accessed %s.', $role, $module));
+        } catch (HttpException $exception) {
+            // Symfony HttpException stores the HTTP status separately from Exception::getCode().
+            $this->assertSame(403, $exception->getStatusCode());
+        }
     }
 }
