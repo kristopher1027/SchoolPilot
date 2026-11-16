@@ -56,4 +56,22 @@ class RoleMiddlewareTest extends TestCase
             'principal'
         );
     }
+
+    public function test_librarian_role_can_access_library_routes(): void
+    {
+        $guard = \\Mockery::mock();
+        $guard->shouldReceive('user')->once()->andReturn((object) ['role' => 'librarian']);
+        Auth::shouldReceive('guard')->once()->with('school')->andReturn($guard);
+
+        $response = (new RoleMiddleware())->handle(
+            Request::create('/school/greenfield/library'),
+            fn () => response('allowed'),
+            'school_admin',
+            'principal',
+            'bursar',
+            'librarian'
+        );
+
+        $this->assertSame('allowed', $response->getContent());
+    }
 }
