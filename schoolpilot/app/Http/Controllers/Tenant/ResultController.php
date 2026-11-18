@@ -167,13 +167,14 @@ class ResultController extends Controller
         if ($user && $user->role === 'parent') {
             // A parent without a guardian profile is unauthorized, not a
             // missing resource. Check ownership before loading class/results.
-            $guardianId = DB::table('parents')
+            $tenantDb = DB::connection('tenant_sqlite');
+            $guardianId = $tenantDb->table('parents')
                 ->where('user_id', $user->getAuthIdentifier())
                 ->value('id');
 
             abort_unless($guardianId, 403);
 
-            $isLinkedToStudent = DB::table('student_parents')
+            $isLinkedToStudent = $tenantDb->table('student_parents')
                 ->where('parent_id', $guardianId)
                 ->where('student_id', $student->getKey())
                 ->exists();
