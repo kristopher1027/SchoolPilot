@@ -163,9 +163,22 @@ class ResultController extends Controller
         Term::whereKey($termId)->where('academic_session_id', $sessionId)->firstOrFail();
         $student = Student::findOrFail($studentId);
 
-        if (Auth::guard('school')->user()?->role === 'parent') {
-            $guardian = \App\Models\Tenant\Guardian::where('user_id', Auth::guard('school')->id())->firstOrFail();
-            abort_unless($guardian->students()->where('students.id', $student->id)->exists(), 403);
+        $user = $request->user('school');
+        if ($user?->role === 'parent') {
+            // A parent without a guardian profile is unauthorized, not a
+            // missing resource. Check ownership before loading class/results.
+            $guardianId = DB::table('parents')
+                ->where('user_id', $user->getAuthIdentifier())
+                ->value('id');
+
+            abort_unless($guardianId, 403);
+
+            $isLinkedToStudent = DB::table('student_parents')
+                ->where('parent_id', $guardianId)
+                ->where('student_id', $student->getKey())
+                ->exists();
+
+            abort_unless($isLinkedToStudent, 403);
         }
 
         $class = SchoolClass::findOrFail($student->class_id);
