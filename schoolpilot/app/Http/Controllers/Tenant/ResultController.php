@@ -154,20 +154,13 @@ class ResultController extends Controller
 
     public function reportCard(Request $request, $studentId)
     {
-        $validated = $request->validate([
-            'term_id' => ['required', 'integer', 'exists:terms,id'],
-            'session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
-        ]);
-        $termId = $validated['term_id'];
-        $sessionId = $validated['session_id'];
-        Term::whereKey($termId)->where('academic_session_id', $sessionId)->firstOrFail();
-        $student = Student::findOrFail($studentId);
-
+        // Authorize parent access before validating or loading report data.
+        // This ensures an unrelated student is rejected with 403 even when
+        // that student's class or report approval does not exist.
         $user = Auth::guard('school')->user();
         if ($user && $user->role === 'parent') {
-            // A parent without a guardian profile is unauthorized, not a
-            // missing resource. Check ownership before loading class/results.
             $tenantDb = DB::connection('tenant_sqlite');
+
             $guardianId = $tenantDb->table('parents')
                 ->where('user_id', $user->getAuthIdentifier())
                 ->value('id');
@@ -176,11 +169,20 @@ class ResultController extends Controller
 
             $isLinkedToStudent = $tenantDb->table('student_parents')
                 ->where('parent_id', $guardianId)
-                ->where('student_id', $student->getKey())
+                ->where('student_id', $studentId)
                 ->exists();
 
             abort_unless($isLinkedToStudent, 403);
         }
+
+        $validated = $request->validate([
+            'term_id' => ['required', 'integer', 'exists:terms,id'],
+            'session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
+        ]);
+        $termId = $validated['term_id'];
+        $sessionId = $validated['session_id'];
+        Term::whereKey($termId)->where('academic_session_id', $sessionId)->firstOrFail();
+        $student = Student::findOrFail($studentId);
 
         $class = SchoolClass::findOrFail($student->class_id);
 
