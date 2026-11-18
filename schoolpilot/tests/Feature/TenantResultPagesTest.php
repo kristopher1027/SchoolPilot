@@ -211,10 +211,15 @@ class TenantResultPagesTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $this->actingAs(User::query()->findOrFail($parentUserId), 'school')
+        $response = $this->actingAs(User::query()->findOrFail($parentUserId), 'school')
             ->withSession(['_school_authenticated_slug' => 'results-test'])
-            ->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}")
-            ->assertNotFound();
+            ->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}");
+
+        $this->assertSame(
+            404,
+            $response->status(),
+            'Expected an unpublished report card to be hidden with 404. Response body: ' . $response->getContent()
+        );
     }
 
     private function createParentFixture(): array
