@@ -161,15 +161,13 @@ class ResultController extends Controller
         if ($user && $user->role === 'parent') {
             $tenantDb = DB::connection('tenant_sqlite');
 
-            $guardianId = $tenantDb->table('parents')
-                ->where('user_id', $user->getAuthIdentifier())
-                ->value('id');
-
-            abort_unless($guardianId, 403);
-
+            // Resolve ownership in one tenant-scoped query so the parent
+            // account and student relationship are checked against the same
+            // database snapshot.
             $isLinkedToStudent = $tenantDb->table('student_parents')
-                ->where('parent_id', $guardianId)
-                ->where('student_id', $studentId)
+                ->join('parents', 'parents.id', '=', 'student_parents.parent_id')
+                ->where('parents.user_id', $user->getAuthIdentifier())
+                ->where('student_parents.student_id', $studentId)
                 ->exists();
 
             abort_unless($isLinkedToStudent, 403);
