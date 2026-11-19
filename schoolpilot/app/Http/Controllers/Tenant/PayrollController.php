@@ -15,8 +15,13 @@ class PayrollController extends Controller
 {
     private const MANAGERS = ['school_admin', 'principal', 'bursar'];
 
-    public function index()
+    public function index(Request $request)
     {
+        $filters = $request->validate([
+            'year' => ['sometimes', 'integer', 'between:2020,2100'],
+        ]);
+        $selectedYear = (int) ($filters['year'] ?? now()->year);
+
         $components = DB::table('salary_components')->orderBy('type')->orderBy('name')->get();
         $assignments = DB::table('staff_salary_assignments as a')
             ->join('staff as s', 's.id', '=', 'a.staff_id')
@@ -24,9 +29,36 @@ class PayrollController extends Controller
             ->select('a.*', 's.staff_no', 'u.name as staff_name')
             ->orderBy('u.name')->get();
         $staff = Staff::with('user')->whereHas('user', fn ($q) => $q->where('is_active', true))->orderBy('staff_no')->get();
-        $periods = DB::table('payroll_periods')->orderByDesc('year')->orderByDesc('month')->limit(24)->get();
+        $availableYears = DB::table('payroll_periods')->select('year')->distinct()->orderByDesc('year')->pluck('year');
+        $periods = DB::table('payroll_periods')
+            ->where('year', $selectedYear)
+            ->orderByDesc('month')
+            ->limit(24)
+            ->get();
+        $financialSummaries = $this->financialSummariesForYear($selectedYear)->get();
 
-        return view('tenant.payroll.index', compact('components', 'assignments', 'staff', 'periods'));
+        return view('tenant.payroll.index', compact(
+            'components', 'assignments', 'staff', 'periods',
+            'availableYears', 'selectedYear', 'financialSummaries'
+        ));
+    }
+
+
+    private function financialSummariesForYear(int $year)
+    {
+        return DB::table('payroll_periods')
+            ->where('year', $year)
+            ->select('currency')
+            ->selectRaw('COUNT(*) as period_count')
+            ->selectRaw("SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft_count")
+            ->selectRaw("SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved_count")
+            ->selectRaw("SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_count")
+            ->selectRaw('SUM(staff_count) as staff_period_count')
+            ->selectRaw('SUM(gross_total) as gross_total')
+            ->selectRaw('SUM(deductions_total) as deductions_total')
+            ->selectRaw('SUM(net_total) as net_total')
+            ->groupBy('currency')
+            ->orderBy('currency');
     }
 
     public function storeComponent(Request $request)

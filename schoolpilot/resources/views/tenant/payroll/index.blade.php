@@ -5,6 +5,46 @@
     <div><h1 class="text-2xl font-bold text-gray-900">Payroll Management</h1><p class="mt-1 text-sm text-gray-600">Configure salary components, assign staff salaries and process monthly payroll.</p></div>
 
     <section class="rounded-xl bg-white p-5 shadow">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <h2 class="text-lg font-semibold text-gray-900">Payroll financial summary</h2>
+                <p class="mt-1 text-sm text-gray-500">Annual totals are grouped by currency; amounts in different currencies are never combined.</p>
+            </div>
+            <form method="GET" action="{{ url('/school/'.request()->route('school').'/payroll') }}" class="flex items-end gap-2">
+                <label class="text-sm font-medium text-gray-700">Financial year
+                    <select name="year" class="mt-1 block rounded-lg border-gray-300 text-sm">
+                        @foreach($availableYears as $year)<option value="{{ $year }}" @selected($selectedYear===(int)$year)>{{ $year }}</option>@endforeach
+                        @if(!$availableYears->contains($selectedYear))<option value="{{ $selectedYear }}" selected>{{ $selectedYear }}</option>@endif
+                    </select>
+                </label>
+                <button class="rounded-lg bg-blue-800 px-4 py-2 text-sm font-semibold text-white">View</button>
+            </form>
+        </div>
+        @if($financialSummaries->isEmpty())
+            <p class="mt-4 rounded-lg bg-gray-50 p-4 text-sm text-gray-500">No payroll periods have been created for {{ $selectedYear }}.</p>
+        @else
+            <div class="mt-4 grid gap-4 lg:grid-cols-2">
+                @foreach($financialSummaries as $summary)
+                    <div class="rounded-lg border border-gray-200 p-4">
+                        <h3 class="font-semibold text-gray-900">{{ $summary->currency }} <span class="text-sm font-normal text-gray-500">{{ $summary->period_count }} periods</span></h3>
+                        <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
+                            <div><dt class="text-gray-500">Gross payroll</dt><dd class="mt-1 font-semibold">{{ number_format($summary->gross_total, 2) }}</dd></div>
+                            <div><dt class="text-gray-500">Deductions</dt><dd class="mt-1 font-semibold">{{ number_format($summary->deductions_total, 2) }}</dd></div>
+                            <div><dt class="text-gray-500">Net payroll</dt><dd class="mt-1 font-semibold">{{ number_format($summary->net_total, 2) }}</dd></div>
+                            <div><dt class="text-gray-500">Staff-periods</dt><dd class="mt-1 font-semibold">{{ number_format($summary->staff_period_count) }}</dd></div>
+                        </dl>
+                        <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                            <span class="rounded-full bg-gray-100 px-2 py-1 text-gray-700">Draft: {{ $summary->draft_count }}</span>
+                            <span class="rounded-full bg-blue-50 px-2 py-1 text-blue-800">Approved: {{ $summary->approved_count }}</span>
+                            <span class="rounded-full bg-green-50 px-2 py-1 text-green-800">Paid: {{ $summary->paid_count }}</span>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </section>
+
+    <section class="rounded-xl bg-white p-5 shadow">
         <h2 class="text-lg font-semibold text-gray-900">Salary components</h2>
         <p class="mt-1 text-sm text-gray-500">Create recurring allowances and deductions. Percentage values are calculated against each staff member's base salary.</p>
         <form method="POST" action="{{ url('/school/'.request()->route('school').'/payroll/components') }}" class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
