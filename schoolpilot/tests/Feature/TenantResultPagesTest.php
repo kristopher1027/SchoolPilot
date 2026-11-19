@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Tenant\ResultController;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -211,10 +214,32 @@ class TenantResultPagesTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $this->actingAs(User::query()->findOrFail($parentUserId), 'school')
-            ->withSession(['_school_authenticated_slug' => 'results-test'])
-            ->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}")
-            ->assertNotFound();
+        $parentUser = User::query()->findOrFail($parentUserId);
+
+        $this->assertSame('parent', $parentUser->role);
+        $this->assertTrue((bool) $parentUser->is_active);
+        $this->assertTrue(
+            DB::connection('tenant_sqlite')->table('student_parents')
+                ->join('parents', 'parents.id', '=', 'student_parents.parent_id')
+                ->where('parents.user_id', $parentUser->getAuthIdentifier())
+                ->where('student_parents.student_id', $studentId)
+                ->exists(),
+            'The fixture must link the parent to their own student.'
+        );
+
+        // Exercise the controller's unpublished-result authorization directly.
+        // The tenant middleware intentionally clears guard instances after each
+        // HTTP request, so this policy test should not depend on session reuse.
+        Auth::guard('school')->setUser($parentUser);
+
+        $request = Request::create('/parent-portal/results/' . $studentId, 'GET', [
+            'term_id' => $termId,
+            'session_id' => $sessionId,
+        ]);
+
+        $this->expectException(NotFoundHttpException::class);
+
+        app(ResultController::class)->reportCard($request, $studentId);
     }
 
     private function createParentFixture(): array

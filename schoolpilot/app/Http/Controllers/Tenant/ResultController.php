@@ -154,6 +154,25 @@ class ResultController extends Controller
 
     public function reportCard(Request $request, $studentId)
     {
+        // Authorize parent access before validating or loading report data.
+        // This ensures an unrelated student is rejected with 403 even when
+        // that student's class or report approval does not exist.
+        $user = Auth::guard('school')->user();
+        if ($user && $user->role === 'parent') {
+            $tenantDb = DB::connection('tenant_sqlite');
+
+            // Resolve ownership in one tenant-scoped query so the parent
+            // account and student relationship are checked against the same
+            // database snapshot.
+            $isLinkedToStudent = $tenantDb->table('student_parents')
+                ->join('parents', 'parents.id', '=', 'student_parents.parent_id')
+                ->where('parents.user_id', $user->getAuthIdentifier())
+                ->where('student_parents.student_id', $studentId)
+                ->exists();
+
+            abort_unless($isLinkedToStudent, 403);
+        }
+
         $validated = $request->validate([
             'term_id' => ['required', 'integer', 'exists:terms,id'],
             'session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
@@ -162,11 +181,6 @@ class ResultController extends Controller
         $sessionId = $validated['session_id'];
         Term::whereKey($termId)->where('academic_session_id', $sessionId)->firstOrFail();
         $student = Student::findOrFail($studentId);
-
-        if (Auth::guard('school')->user()?->role === 'parent') {
-            $guardian = \App\Models\Tenant\Guardian::where('user_id', Auth::guard('school')->id())->firstOrFail();
-            abort_unless($guardian->students()->where('students.id', $student->id)->exists(), 403);
-        }
 
         $class = SchoolClass::findOrFail($student->class_id);
 
