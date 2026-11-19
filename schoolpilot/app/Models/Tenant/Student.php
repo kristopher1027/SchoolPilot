@@ -30,7 +30,7 @@ class Student extends Model
     public function guardians()
     {
         return $this->belongsToMany(Guardian::class, 'student_parents', 'student_id', 'parent_id')
-            ->withPivot('is_primary')
+            ->withPivot('is_primary', 'relationship', 'is_emergency_contact', 'can_pickup')
             ->withTimestamps();
     }
 
