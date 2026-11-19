@@ -211,7 +211,20 @@ class TenantResultPagesTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $response = $this->actingAs(User::query()->findOrFail($parentUserId), 'school')
+        $parentUser = User::query()->findOrFail($parentUserId);
+
+        $this->assertSame('parent', $parentUser->role);
+        $this->assertTrue((bool) $parentUser->is_active);
+        $this->assertTrue(
+            DB::connection('tenant_sqlite')->table('student_parents')
+                ->join('parents', 'parents.id', '=', 'student_parents.parent_id')
+                ->where('parents.user_id', $parentUser->getAuthIdentifier())
+                ->where('student_parents.student_id', $studentId)
+                ->exists(),
+            'The fixture must link the authenticated parent to their own student.'
+        );
+
+        $response = $this->actingAs($parentUser, 'school')
             ->withSession(['_school_authenticated_slug' => 'results-test'])
             ->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}");
 
