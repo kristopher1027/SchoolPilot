@@ -87,7 +87,9 @@ class UseSchoolDatabase
             DB::purge('tenant_sqlite');
             Config::set('database.default', $previousDefault);
             DB::setDefaultConnection($previousDefault);
-            Auth::forgetGuards();
+            // Keep the guard instance for the remainder of the request lifecycle.
+            // Laravel creates a fresh application per HTTP request; clearing it here
+            // breaks sequential authenticated requests in feature tests.
             Auth::shouldUse($previousGuard);
         }
     }
