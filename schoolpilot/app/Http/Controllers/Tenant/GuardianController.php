@@ -64,7 +64,7 @@ class GuardianController extends Controller
             ->with('success', 'Parent/guardian record created. Link the guardian to the relevant student profile.');
     }
 
-    public function show(Guardian $guardian)
+    public function show(string $school, Guardian $guardian)
     {
         $guardian->load([
             'user',
@@ -77,14 +77,14 @@ class GuardianController extends Controller
         return view('tenant.parents.show', compact('guardian'));
     }
 
-    public function edit(Guardian $guardian)
+    public function edit(string $school, Guardian $guardian)
     {
         $guardian->load('user');
 
         return view('tenant.parents.edit', compact('guardian'));
     }
 
-    public function update(Request $request, Guardian $guardian)
+    public function update(Request $request, string $school, Guardian $guardian)
     {
         $data = $this->validatedGuardianData($request, $guardian);
 
@@ -113,7 +113,7 @@ class GuardianController extends Controller
             ->with('success', 'Parent/guardian record updated.');
     }
 
-    public function attachToStudent(Request $request, Student $student)
+    public function attachToStudent(Request $request, string $school, Student $student)
     {
         $data = $request->validate([
             'guardian_id' => ['required', 'integer', 'exists:parents,id'],
@@ -147,7 +147,7 @@ class GuardianController extends Controller
         return back()->with('success', 'Guardian linked to student.');
     }
 
-    public function detachFromStudent(Student $student, Guardian $guardian)
+    public function detachFromStudent(string $school, Student $student, Guardian $guardian)
     {
         $student->guardians()->detach($guardian->id);
 
