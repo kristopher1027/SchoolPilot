@@ -4,7 +4,24 @@
 <div class="mx-auto max-w-3xl space-y-5">
     <div class="flex items-center justify-between"><a href="{{ url('/school/'.request()->route('school').'/payroll/payslips') }}" class="text-sm font-semibold text-blue-800 hover:underline">← My payslips</a><button type="button" onclick="window.print()" class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 print:hidden">Print payslip</button></div>
     <article class="rounded-xl bg-white p-6 shadow print:shadow-none">
-        <div class="border-b pb-5 text-center"><h1 class="text-2xl font-bold text-gray-900">Salary Payslip</h1><p class="mt-1 text-sm text-gray-500">{{ \Illuminate\Support\Carbon::createFromDate($payslip->year,$payslip->month,1)->format('F Y') }}</p><p class="mt-1 text-xs text-gray-500">{{ ucfirst($payslip->payroll_status) }} payroll</p></div>
+        <header class="flex flex-col items-center gap-3 border-b pb-6 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+            <div class="flex items-center gap-3">
+                @if($schoolLogoUrl)
+                    <img src="{{ $schoolLogoUrl }}" alt="{{ $schoolSettings->get('school_name', 'School') }} logo" class="h-16 w-16 rounded-lg border border-gray-200 object-contain p-1">
+                @endif
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900">{{ $schoolSettings->get('school_name', 'School') }}</h1>
+                    @if($schoolSettings->get('motto'))<p class="mt-1 text-xs text-gray-500">{{ $schoolSettings->get('motto') }}</p>@endif
+                    @if($schoolSettings->get('address'))<p class="mt-1 text-xs text-gray-500">{{ $schoolSettings->get('address') }}</p>@endif
+                    <p class="mt-1 text-xs text-gray-500">{{ collect([$schoolSettings->get('email'), $schoolSettings->get('phone')])->filter()->implode(' · ') }}</p>
+                </div>
+            </div>
+            <div class="sm:text-right">
+                <h2 class="text-xl font-bold text-gray-900">Salary Payslip</h2>
+                <p class="mt-1 text-sm text-gray-500">{{ \Illuminate\Support\Carbon::createFromDate($payslip->year,$payslip->month,1)->format('F Y') }}</p>
+                <p class="mt-1 text-xs text-gray-500">{{ ucfirst($payslip->payroll_status) }} payroll</p>
+            </div>
+        </header>
         <div class="grid grid-cols-2 gap-4 border-b py-5 text-sm"><div><p class="text-xs text-gray-500">Staff name</p><p class="font-semibold text-gray-900">{{ $payslip->staff_name }}</p></div><div><p class="text-xs text-gray-500">Staff number</p><p class="font-semibold text-gray-900">{{ $payslip->staff_no }}</p></div></div>
         @php($breakdown = json_decode($payslip->breakdown, true) ?: [])
         <div class="space-y-3 py-5"><h2 class="font-semibold text-gray-900">Earnings</h2><div class="flex justify-between text-sm"><span>Basic salary</span><span>{{ $payslip->currency }} {{ number_format($payslip->base_salary,2) }}</span></div>
@@ -17,7 +34,10 @@
         </div>
         <div class="rounded-lg bg-blue-50 p-4"><div class="flex justify-between text-lg font-bold text-gray-900"><span>Net pay</span><span>{{ $payslip->currency }} {{ number_format($payslip->net_pay,2) }}</span></div></div>
         @if($payslip->payroll_status==='paid')<p class="mt-4 text-xs text-gray-500">Payment recorded: {{ $payslip->paid_at ? \Illuminate\Support\Carbon::parse($payslip->paid_at)->format('d M Y') : '—' }} · Reference: {{ $payslip->payment_reference ?: '—' }}</p>@endif
-        <p class="mt-6 border-t pt-4 text-center text-xs text-gray-400">This is a system-generated payroll statement.</p>
+        <div class="mt-6 border-t pt-4 text-center text-xs text-gray-400">
+            <p>This is a system-generated payroll statement issued by {{ $schoolSettings->get('school_name', 'the school') }}.</p>
+            <p class="mt-1">For payroll enquiries, contact the school administration using the details above.</p>
+        </div>
     </article>
 </div>
 @endsection
