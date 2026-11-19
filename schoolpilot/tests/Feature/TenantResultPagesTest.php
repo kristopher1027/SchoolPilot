@@ -232,7 +232,7 @@ class TenantResultPagesTest extends TestCase
             $this->actingAs($parentUser, 'school')
                 ->withSession(['_school_authenticated_slug' => 'results-test'])
                 ->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}");
-        } catch (\\Symfony\\Component\\HttpKernel\\Exception\\HttpException $exception) {
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
             $trace = $exception->getTrace();
             $origin = $trace[0] ?? [];
 
