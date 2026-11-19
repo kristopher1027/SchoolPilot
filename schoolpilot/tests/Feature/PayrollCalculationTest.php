@@ -200,6 +200,54 @@ class PayrollCalculationTest extends TestCase
         }
     }
 
+    public function test_payroll_reconciliation_matches_period_totals_and_payment_reference(): void
+    {
+        $controller = new PayrollController();
+        $method = new ReflectionMethod($controller, 'reconcilePayroll');
+        $method->setAccessible(true);
+
+        $payroll = (object) [
+            'staff_count' => 2,
+            'gross_total' => '500000.00',
+            'deductions_total' => '25000.00',
+            'net_total' => '475000.00',
+            'status' => 'paid',
+            'payment_reference' => 'BANK-BATCH-2026-11',
+        ];
+        $items = collect([
+            (object) ['gross_pay' => 300000, 'deductions_total' => 15000, 'net_pay' => 285000],
+            (object) ['gross_pay' => 200000, 'deductions_total' => 10000, 'net_pay' => 190000],
+        ]);
+
+        $result = $method->invoke($controller, $payroll, $items);
+        $this->assertTrue($result['passed']);
+        $this->assertSame(2, $result['matched_items']);
+
+        $items[1]->net_pay = 189999;
+        $result = $method->invoke($controller, $payroll, $items);
+        $this->assertFalse($result['passed']);
+        $this->assertFalse($result['checks']['net_total']['passed']);
+    }
+
+    public function test_paid_payroll_reconciliation_requires_a_payment_reference(): void
+    {
+        $controller = new PayrollController();
+        $method = new ReflectionMethod($controller, 'reconcilePayroll');
+        $method->setAccessible(true);
+        $payroll = (object) [
+            'staff_count' => 0,
+            'gross_total' => 0,
+            'deductions_total' => 0,
+            'net_total' => 0,
+            'status' => 'paid',
+            'payment_reference' => '   ',
+        ];
+
+        $result = $method->invoke($controller, $payroll, collect());
+        $this->assertFalse($result['passed']);
+        $this->assertFalse($result['checks']['payment_reference']['passed']);
+    }
+
     public function test_payroll_approval_requires_item_count_and_all_totals_to_match(): void
     {
         $controller = new PayrollController();
