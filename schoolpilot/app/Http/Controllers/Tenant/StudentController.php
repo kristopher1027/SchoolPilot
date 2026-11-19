@@ -115,9 +115,8 @@ class StudentController extends Controller
             ->with('success', 'Student personal record updated successfully.');
     }
 
-    public function changeLifecycle(Request $request, $student)
+    public function changeLifecycle(Request $request, Student $student)
     {
-        $student = Student::query()->findOrFail($student);
 
         $data = $request->validate([
             'section_id' => ['required', 'integer', 'exists:sections,id'],
