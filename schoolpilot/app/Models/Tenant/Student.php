@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Student extends Model
 {
+    /** Tenant records must always resolve against the active school's database. */
+    protected $connection = 'tenant_sqlite';
+
     protected $fillable = [
         'admission_no', 'first_name', 'last_name', 'middle_name', 'gender',
         'date_of_birth', 'section_id', 'class_id', 'date_admitted', 'status',
@@ -30,7 +33,7 @@ class Student extends Model
     public function guardians()
     {
         return $this->belongsToMany(Guardian::class, 'student_parents', 'student_id', 'parent_id')
-            ->withPivot('is_primary')
+            ->withPivot('is_primary', 'relationship', 'is_emergency_contact', 'can_pickup')
             ->withTimestamps();
     }
 

@@ -64,7 +64,7 @@ class GuardianController extends Controller
             ->with('success', 'Parent/guardian record created. Link the guardian to the relevant student profile.');
     }
 
-    public function show(Guardian $guardian)
+    public function show(string $school, Guardian $guardian)
     {
         $guardian->load([
             'user',
@@ -77,14 +77,14 @@ class GuardianController extends Controller
         return view('tenant.parents.show', compact('guardian'));
     }
 
-    public function edit(Guardian $guardian)
+    public function edit(string $school, Guardian $guardian)
     {
         $guardian->load('user');
 
         return view('tenant.parents.edit', compact('guardian'));
     }
 
-    public function update(Request $request, Guardian $guardian)
+    public function update(Request $request, string $school, Guardian $guardian)
     {
         $data = $this->validatedGuardianData($request, $guardian);
 
@@ -113,29 +113,75 @@ class GuardianController extends Controller
             ->with('success', 'Parent/guardian record updated.');
     }
 
-    public function attachToStudent(Request $request, Student $student)
+    public function attachToStudent(Request $request, string $school, Student $student)
     {
         $data = $request->validate([
             'guardian_id' => ['required', 'integer', 'exists:parents,id'],
+            'relationship' => ['required', 'string', 'max:100'],
             'is_primary' => ['sometimes', 'boolean'],
+            'is_emergency_contact' => ['sometimes', 'boolean'],
+            'can_pickup' => ['sometimes', 'boolean'],
         ]);
 
         $guardianId = (int) $data['guardian_id'];
-        $isPrimary = (bool) ($data['is_primary'] ?? false);
+        $pivotData = [
+            'relationship' => trim($data['relationship']),
+            'is_primary' => (bool) ($data['is_primary'] ?? false),
+            'is_emergency_contact' => (bool) ($data['is_emergency_contact'] ?? false),
+            'can_pickup' => (bool) ($data['can_pickup'] ?? false),
+        ];
 
-        DB::transaction(function () use ($student, $guardianId, $isPrimary) {
-            if ($isPrimary) {
-                DB::table('student_parents')->where('student_id', $student->id)->update(['is_primary' => false]);
+        // Use one explicit tenant connection for every pivot write. Avoid
+        // relationship sync helpers here so clearing and assigning contact
+        // flags cannot be split across different resolved connections.
+        $connection = DB::connection('tenant_sqlite');
+
+        $connection->transaction(function () use ($student, $guardianId, $pivotData, $connection) {
+            $studentGuardians = $connection->table('student_parents')
+                ->where('student_id', $student->id);
+
+            $alreadyLinked = (clone $studentGuardians)
+                ->where('parent_id', $guardianId)
+                ->exists();
+
+            // The limit belongs to the student relationship, never to the guardian.
+            // A guardian may be linked to any number of other students.
+            if (! $alreadyLinked && (clone $studentGuardians)->count() >= 2) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'guardian_id' => 'A student can have no more than two guardians.',
+                ]);
             }
 
-            $student->guardians()->syncWithoutDetaching([$guardianId]);
-            $student->guardians()->updateExistingPivot($guardianId, ['is_primary' => $isPrimary]);
+            if ($pivotData['is_primary']) {
+                (clone $studentGuardians)->update(['is_primary' => false]);
+            }
+
+            if ($pivotData['is_emergency_contact']) {
+                (clone $studentGuardians)->update(['is_emergency_contact' => false]);
+            }
+
+            $guardianLink = $connection->table('student_parents')
+                ->where('student_id', $student->id)
+                ->where('parent_id', $guardianId);
+
+            $values = $pivotData + ['updated_at' => now()];
+
+            if ($guardianLink->exists()) {
+                $guardianLink->update($values);
+            } else {
+                $connection->table('student_parents')->insert($values + [
+                    'student_id' => $student->id,
+                    'parent_id' => $guardianId,
+                    'created_at' => now(),
+                ]);
+            }
         });
 
-        return back()->with('success', 'Guardian linked to student.');
+        return redirect('/school/' . $school . '/students/' . $student->id)
+            ->with('success', 'Guardian linked to student.');
     }
 
-    public function detachFromStudent(Student $student, Guardian $guardian)
+    public function detachFromStudent(string $school, Student $student, Guardian $guardian)
     {
         $student->guardians()->detach($guardian->id);
 
