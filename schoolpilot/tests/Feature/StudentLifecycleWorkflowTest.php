@@ -173,8 +173,8 @@ class StudentLifecycleWorkflowTest extends TestCase
     public function test_csv_import_creates_students_and_enrollment_history(): void
     {
         $sectionId = DB::table('sections')->insertGetId(['name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now()]);
-        $csv = "admission_no,first_name,last_name,middle_name,gender,date_of_birth,section_id,class_id,date_admitted,address,blood_group,genotype,allergies\\n"
-            . "CSV-001,Ada,Okafor,,female,2012-04-10,{$sectionId},,2026-09-01,,,,\\n";
+        $csv = "admission_no,first_name,last_name,middle_name,gender,date_of_birth,section_id,class_id,date_admitted,address,blood_group,genotype,allergies\n"
+            . "CSV-001,Ada,Okafor,,female,2012-04-10,{$sectionId},,2026-09-01,,,,\n";
         $file = UploadedFile::fake()->createWithContent('students.csv', $csv);
 
         $this->post('/school/student-lifecycle-test/students/import', ['file' => $file])
@@ -192,10 +192,10 @@ class StudentLifecycleWorkflowTest extends TestCase
     public function test_csv_import_skips_duplicate_and_invalid_rows_without_creating_them(): void
     {
         $sectionId = DB::table('sections')->insertGetId(['name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now()]);
-        $csv = "admission_no,first_name,last_name,gender,date_of_birth,section_id,date_admitted\\n"
-            . "DUP-001,Ada,Okafor,female,2012-04-10,{$sectionId},2026-09-01\\n"
-            . "DUP-001,Eva,Okafor,female,2012-04-10,{$sectionId},2026-09-01\\n"
-            . "BAD-001,Sam,Okafor,unknown,2012-04-10,{$sectionId},2026-09-01\\n";
+        $csv = "admission_no,first_name,last_name,gender,date_of_birth,section_id,date_admitted\n"
+            . "DUP-001,Ada,Okafor,female,2012-04-10,{$sectionId},2026-09-01\n"
+            . "DUP-001,Eva,Okafor,female,2012-04-10,{$sectionId},2026-09-01\n"
+            . "BAD-001,Sam,Okafor,unknown,2012-04-10,{$sectionId},2026-09-01\n";
         $file = UploadedFile::fake()->createWithContent('students.csv', $csv);
 
         $this->post('/school/student-lifecycle-test/students/import', ['file' => $file])
