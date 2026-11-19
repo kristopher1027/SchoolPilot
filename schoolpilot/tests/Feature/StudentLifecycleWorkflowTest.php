@@ -256,7 +256,8 @@ class StudentLifecycleWorkflowTest extends TestCase
                 'relationship' => $index === 0 ? 'Mother' : 'Father',
                 'is_primary' => '1',
                 'is_emergency_contact' => '1',
-            ])->assertRedirect()
+            ])->assertRedirect('/school/student-lifecycle-test/students/' . $studentId)
+              ->assertSessionHasNoErrors()
               ->assertSessionHas('success', 'Guardian linked to student.');
         }
 
