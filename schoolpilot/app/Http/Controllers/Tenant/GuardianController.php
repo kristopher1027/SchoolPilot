@@ -140,6 +140,18 @@ class GuardianController extends Controller
             $studentGuardians = $connection->table('student_parents')
                 ->where('student_id', $student->id);
 
+            $alreadyLinked = (clone $studentGuardians)
+                ->where('parent_id', $guardianId)
+                ->exists();
+
+            // The limit belongs to the student relationship, never to the guardian.
+            // A guardian may be linked to any number of other students.
+            if (! $alreadyLinked && (clone $studentGuardians)->count() >= 2) {
+                throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                    'guardian_id' => 'A student can have no more than two guardians.',
+                ]);
+            }
+
             if ($pivotData['is_primary']) {
                 (clone $studentGuardians)->update(['is_primary' => false]);
             }
@@ -165,7 +177,8 @@ class GuardianController extends Controller
             }
         });
 
-        return back()->with('success', 'Guardian linked to student.');
+        return redirect('/school/' . $school . '/students/' . $student->id)
+            ->with('success', 'Guardian linked to student.');
     }
 
     public function detachFromStudent(string $school, Student $student, Guardian $guardian)
