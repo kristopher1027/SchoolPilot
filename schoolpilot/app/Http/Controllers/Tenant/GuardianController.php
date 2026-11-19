@@ -133,11 +133,11 @@ class GuardianController extends Controller
 
         DB::transaction(function () use ($student, $guardianId, $pivotData) {
             if ($pivotData['is_primary']) {
-                DB::table('student_parents')->where('student_id', $student->id)->update(['is_primary' => false]);
+                DB::connection('tenant_sqlite')->table('student_parents')->where('student_id', $student->id)->update(['is_primary' => false]);
             }
 
             if ($pivotData['is_emergency_contact']) {
-                DB::table('student_parents')->where('student_id', $student->id)->update(['is_emergency_contact' => false]);
+                DB::connection('tenant_sqlite')->table('student_parents')->where('student_id', $student->id)->update(['is_emergency_contact' => false]);
             }
 
             $student->guardians()->syncWithoutDetaching([$guardianId]);
