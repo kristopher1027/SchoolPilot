@@ -166,6 +166,53 @@ class PayrollController extends Controller
         return view('tenant.payroll.show', compact('payroll', 'items'));
     }
 
+    public function export(Request $request, int $period)
+    {
+        $payroll = DB::table('payroll_periods')->where('id', $period)->first();
+        abort_unless($payroll, 404);
+
+        $items = DB::table('payroll_items')
+            ->where('payroll_period_id', $period)
+            ->orderBy('staff_name')
+            ->orderBy('staff_no')
+            ->get();
+
+        $this->audit('payroll.register_exported', 'payroll_period', $period, null, [
+            'item_count' => $items->count(),
+            'status' => $payroll->status,
+        ], $request);
+
+        $filename = sprintf(
+            'schoolpilot-payroll-%04d-%02d-%s.csv',
+            $payroll->year,
+            $payroll->month,
+            strtolower($payroll->currency)
+        );
+
+        return response()->streamDownload(function () use ($items, $payroll) {
+            $output = fopen('php://output', 'w');
+            fputcsv($output, [
+                'Staff number', 'Staff name', 'Currency', 'Basic salary',
+                'Allowances', 'Deductions', 'Gross pay', 'Net pay',
+            ]);
+
+            foreach ($items as $item) {
+                fputcsv($output, array_map(fn ($value) => $this->safeCsvValue($value), [
+                    $item->staff_no,
+                    $item->staff_name,
+                    $payroll->currency,
+                    $item->base_salary,
+                    $item->allowances_total,
+                    $item->deductions_total,
+                    $item->gross_pay,
+                    $item->net_pay,
+                ]));
+            }
+
+            fclose($output);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     public function generate(Request $request, int $period)
     {
         $actor = Auth::guard('school')->user();
@@ -344,6 +391,15 @@ class PayrollController extends Controller
         abort_unless($payslip, 404);
 
         return view('tenant.payroll.payslip', compact('payslip'));
+    }
+
+    private function safeCsvValue(mixed $value): mixed
+    {
+        if (! is_string($value) || $value === '') {
+            return $value;
+        }
+
+        return preg_match('/^[=+@\\-\\t\\r]/', $value) ? "'" . $value : $value;
     }
 
     private function isFirstDayOfMonth(string $date): bool
