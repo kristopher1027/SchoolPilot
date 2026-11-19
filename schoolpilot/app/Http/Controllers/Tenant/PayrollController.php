@@ -35,9 +35,19 @@ class PayrollController extends Controller
             ->orderByDesc('month')
             ->limit(24)
             ->get();
-        // Keep currencies separate: totals in different currencies must never be combined.
-        $financialSummaries = DB::table('payroll_periods')
-            ->where('year', $selectedYear)
+        $financialSummaries = $this->financialSummariesForYear($selectedYear)->get();
+
+        return view('tenant.payroll.index', compact(
+            'components', 'assignments', 'staff', 'periods',
+            'availableYears', 'selectedYear', 'financialSummaries'
+        ));
+    }
+
+
+    private function financialSummariesForYear(int $year)
+    {
+        return DB::table('payroll_periods')
+            ->where('year', $year)
             ->select('currency')
             ->selectRaw('COUNT(*) as period_count')
             ->selectRaw("SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END) as draft_count")
@@ -48,13 +58,7 @@ class PayrollController extends Controller
             ->selectRaw('SUM(deductions_total) as deductions_total')
             ->selectRaw('SUM(net_total) as net_total')
             ->groupBy('currency')
-            ->orderBy('currency')
-            ->get();
-
-        return view('tenant.payroll.index', compact(
-            'components', 'assignments', 'staff', 'periods',
-            'availableYears', 'selectedYear', 'financialSummaries'
-        ));
+            ->orderBy('currency');
     }
 
     public function storeComponent(Request $request)
