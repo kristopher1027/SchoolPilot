@@ -224,15 +224,28 @@ class TenantResultPagesTest extends TestCase
             'The fixture must link the authenticated parent to their own student.'
         );
 
-        $response = $this->actingAs($parentUser, 'school')
-            ->withSession(['_school_authenticated_slug' => 'results-test'])
-            ->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}");
+        // Let the original HTTP exception escape so CI identifies the exact
+        // authorization layer producing the unexpected 403.
+        $this->withoutExceptionHandling();
 
-        $this->assertSame(
-            404,
-            $response->status(),
-            'Expected an unpublished report card to be hidden with 404. Response body: ' . $response->getContent()
-        );
+        try {
+            $this->actingAs($parentUser, 'school')
+                ->withSession(['_school_authenticated_slug' => 'results-test'])
+                ->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}");
+        } catch (\\Symfony\\Component\\HttpKernel\\Exception\\HttpException $exception) {
+            $trace = $exception->getTrace();
+            $origin = $trace[0] ?? [];
+
+            $this->fail(sprintf(
+                'Report-card request threw HTTP %d: %s. Origin: %s:%s',
+                $exception->getStatusCode(),
+                $exception->getMessage(),
+                $origin['file'] ?? 'unknown',
+                $origin['line'] ?? 'unknown'
+            ));
+        }
+
+        $this->fail('Expected an unpublished report card to throw HTTP 404.');
     }
 
     private function createParentFixture(): array
