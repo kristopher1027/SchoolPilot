@@ -60,6 +60,11 @@ class PayrollController extends Controller
             'component_overrides.*' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
         ]);
         $start = Carbon::parse($data['effective_from'])->toDateString();
+        if (! $this->isFirstDayOfMonth($start)) {
+            return back()->withErrors([
+                'effective_from' => 'Salary changes must take effect on the first day of a month. Mid-month salary changes are not supported by monthly payroll.',
+            ])->withInput();
+        }
         if (strtolower($data['currency']) !== $data['currency']) {
             return back()->withErrors(['currency' => 'Currency must use three uppercase ISO currency letters.'])->withInput();
         }
@@ -339,6 +344,11 @@ class PayrollController extends Controller
         abort_unless($payslip, 404);
 
         return view('tenant.payroll.payslip', compact('payslip'));
+    }
+
+    private function isFirstDayOfMonth(string $date): bool
+    {
+        return Carbon::parse($date)->day === 1;
     }
 
     private function hasGeneratedPayrollOnOrAfter(int $staffId, string $effectiveFrom): bool
