@@ -44,6 +44,55 @@ class PayrollController extends Controller
     }
 
 
+    private function reconcilePayroll(object $payroll, $items): array
+    {
+        $itemCount = $items->count();
+        $gross = round((float) $items->sum('gross_pay'), 2);
+        $deductions = round((float) $items->sum('deductions_total'), 2);
+        $net = round((float) $items->sum('net_pay'), 2);
+        $checks = [
+            'staff_count' => [
+                'label' => 'Staff count',
+                'expected' => (int) $payroll->staff_count,
+                'actual' => $itemCount,
+                'passed' => (int) $payroll->staff_count === $itemCount,
+            ],
+            'gross_total' => [
+                'label' => 'Gross payroll total',
+                'expected' => round((float) $payroll->gross_total, 2),
+                'actual' => $gross,
+                'passed' => abs(round((float) $payroll->gross_total, 2) - $gross) < 0.005,
+            ],
+            'deductions_total' => [
+                'label' => 'Deductions total',
+                'expected' => round((float) $payroll->deductions_total, 2),
+                'actual' => $deductions,
+                'passed' => abs(round((float) $payroll->deductions_total, 2) - $deductions) < 0.005,
+            ],
+            'net_total' => [
+                'label' => 'Net payroll total',
+                'expected' => round((float) $payroll->net_total, 2),
+                'actual' => $net,
+                'passed' => abs(round((float) $payroll->net_total, 2) - $net) < 0.005,
+            ],
+        ];
+
+        $paymentReferenceValid = $payroll->status !== 'paid'
+            || (is_string($payroll->payment_reference) && trim($payroll->payment_reference) !== '');
+        $checks['payment_reference'] = [
+            'label' => 'Payment reference',
+            'expected' => $payroll->status === 'paid' ? 'Required for paid payroll' : 'Not required yet',
+            'actual' => $payroll->payment_reference ?: 'Not recorded',
+            'passed' => $paymentReferenceValid,
+        ];
+
+        return [
+            'checks' => $checks,
+            'passed' => collect($checks)->every(fn ($check) => $check['passed']),
+            'matched_items' => $itemCount,
+        ];
+    }
+
     private function financialSummariesForYear(int $year)
     {
         return DB::table('payroll_periods')
@@ -195,8 +244,9 @@ class PayrollController extends Controller
         $payroll = DB::table('payroll_periods')->where('id', $period)->first();
         abort_unless($payroll, 404);
         $items = DB::table('payroll_items')->where('payroll_period_id', $period)->orderBy('staff_name')->get();
+        $reconciliation = $this->reconcilePayroll($payroll, $items);
 
-        return view('tenant.payroll.show', compact('payroll', 'items'));
+        return view('tenant.payroll.show', compact('payroll', 'items', 'reconciliation'));
     }
 
     public function export(Request $request, int $period)
