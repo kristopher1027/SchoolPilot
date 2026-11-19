@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Student extends Model
 {
+    /** Tenant records must always resolve against the active school's database. */
+    protected $connection = 'tenant_sqlite';
+
     protected $fillable = [
         'admission_no', 'first_name', 'last_name', 'middle_name', 'gender',
         'date_of_birth', 'section_id', 'class_id', 'date_admitted', 'status',
