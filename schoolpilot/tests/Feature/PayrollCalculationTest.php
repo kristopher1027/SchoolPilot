@@ -80,6 +80,19 @@ class PayrollCalculationTest extends TestCase
         $this->assertTrue($method->invoke($controller, (object) ['approved_by' => null], 23));
     }
 
+    public function test_payroll_register_csv_values_are_safe_from_formula_injection(): void
+    {
+        $controller = new PayrollController();
+        $method = new ReflectionMethod($controller, 'safeCsvValue');
+        $method->setAccessible(true);
+
+        $this->assertSame("'=HYPERLINK(\"https://example.com\")", $method->invoke($controller, '=HYPERLINK("https://example.com")'));
+        $this->assertSame("'+SUM(1,2)", $method->invoke($controller, '+SUM(1,2)'));
+        $this->assertSame("'@command", $method->invoke($controller, '@command'));
+        $this->assertSame('Christopher Okoh', $method->invoke($controller, 'Christopher Okoh'));
+        $this->assertSame(12500.50, $method->invoke($controller, 12500.50));
+    }
+
     public function test_monthly_salary_changes_must_start_on_first_day_of_month(): void
     {
         $controller = new PayrollController();
