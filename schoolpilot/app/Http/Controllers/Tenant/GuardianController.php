@@ -131,13 +131,18 @@ class GuardianController extends Controller
             'can_pickup' => (bool) ($data['can_pickup'] ?? false),
         ];
 
-        DB::transaction(function () use ($student, $guardianId, $pivotData) {
+        $connection = $student->getConnection();
+
+        $connection->transaction(function () use ($student, $guardianId, $pivotData, $connection) {
+            $pivotQuery = $connection->table('student_parents')
+                ->where('student_id', $student->id);
+
             if ($pivotData['is_primary']) {
-                DB::connection('tenant_sqlite')->table('student_parents')->where('student_id', $student->id)->update(['is_primary' => false]);
+                (clone $pivotQuery)->update(['is_primary' => false]);
             }
 
             if ($pivotData['is_emergency_contact']) {
-                DB::connection('tenant_sqlite')->table('student_parents')->where('student_id', $student->id)->update(['is_emergency_contact' => false]);
+                (clone $pivotQuery)->update(['is_emergency_contact' => false]);
             }
 
             $student->guardians()->syncWithoutDetaching([$guardianId]);
