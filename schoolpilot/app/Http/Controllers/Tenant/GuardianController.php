@@ -131,22 +131,38 @@ class GuardianController extends Controller
             'can_pickup' => (bool) ($data['can_pickup'] ?? false),
         ];
 
-        $connection = $student->getConnection();
+        // Use one explicit tenant connection for every pivot write. Avoid
+        // relationship sync helpers here so clearing and assigning contact
+        // flags cannot be split across different resolved connections.
+        $connection = DB::connection('tenant_sqlite');
 
         $connection->transaction(function () use ($student, $guardianId, $pivotData, $connection) {
-            $pivotQuery = $connection->table('student_parents')
+            $studentGuardians = $connection->table('student_parents')
                 ->where('student_id', $student->id);
 
             if ($pivotData['is_primary']) {
-                (clone $pivotQuery)->update(['is_primary' => false]);
+                (clone $studentGuardians)->update(['is_primary' => false]);
             }
 
             if ($pivotData['is_emergency_contact']) {
-                (clone $pivotQuery)->update(['is_emergency_contact' => false]);
+                (clone $studentGuardians)->update(['is_emergency_contact' => false]);
             }
 
-            $student->guardians()->syncWithoutDetaching([$guardianId]);
-            $student->guardians()->updateExistingPivot($guardianId, $pivotData);
+            $guardianLink = $connection->table('student_parents')
+                ->where('student_id', $student->id)
+                ->where('parent_id', $guardianId);
+
+            $values = $pivotData + ['updated_at' => now()];
+
+            if ($guardianLink->exists()) {
+                $guardianLink->update($values);
+            } else {
+                $connection->table('student_parents')->insert($values + [
+                    'student_id' => $student->id,
+                    'parent_id' => $guardianId,
+                    'created_at' => now(),
+                ]);
+            }
         });
 
         return back()->with('success', 'Guardian linked to student.');
