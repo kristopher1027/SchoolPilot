@@ -31,6 +31,34 @@
         <p class="rounded-xl bg-green-50 p-4 text-sm text-green-800">Paid {{ $payroll->paid_at ? \Illuminate\Support\Carbon::parse($payroll->paid_at)->format('d M Y, H:i') : '' }} · Reference: {{ $payroll->payment_reference }}</p>
     @endif
 
+    <section class="rounded-xl border {{ $reconciliation['passed'] ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50' }} p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+                <h2 class="font-semibold text-gray-900">Payroll reconciliation</h2>
+                <p class="mt-1 text-sm text-gray-600">Compares the saved period summary with its staff payroll items and checks required payment metadata.</p>
+            </div>
+            <span class="rounded-full px-3 py-1 text-sm font-semibold {{ $reconciliation['passed'] ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">{{ $reconciliation['passed'] ? 'All checks matched' : 'Review required' }}</span>
+        </div>
+        <div class="mt-4 overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="text-xs uppercase text-gray-500"><tr><th class="py-2">Check</th><th class="py-2">Saved value</th><th class="py-2">Reconciled value</th><th class="py-2">Result</th></tr></thead>
+                <tbody class="divide-y divide-gray-200">
+                    @foreach($reconciliation['checks'] as $check)
+                        <tr>
+                            <td class="py-2 font-medium text-gray-800">{{ $check['label'] }}</td>
+                            <td class="py-2">{{ is_numeric($check['expected']) ? number_format((float)$check['expected'], 2) : $check['expected'] }}</td>
+                            <td class="py-2">{{ is_numeric($check['actual']) ? number_format((float)$check['actual'], 2) : $check['actual'] }}</td>
+                            <td class="py-2"><span class="font-semibold {{ $check['passed'] ? 'text-green-700' : 'text-red-700' }}">{{ $check['passed'] ? 'Matched' : 'Mismatch' }}</span></td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @if($payroll->status==='paid')
+            <p class="mt-3 text-xs text-gray-600">This checks that a payment reference is recorded. It does not verify a bank transfer or confirm that funds reached staff.</p>
+        @endif
+    </section>
+
     <section class="overflow-hidden rounded-xl bg-white shadow">
         <div class="border-b p-4"><h2 class="font-semibold text-gray-900">Payroll items</h2><p class="mt-1 text-xs text-gray-500">Amounts are snapshots from salary assignments at the time the draft was generated.</p></div>
         <div class="overflow-x-auto"><table class="w-full text-left text-sm">
