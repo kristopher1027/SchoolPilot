@@ -127,6 +127,16 @@ class AdmissionController extends Controller
                 'address' => $application->address,
             ]);
 
+            $student->enrollmentHistory()->create([
+                'to_section_id' => $student->section_id,
+                'to_class_id' => $student->class_id,
+                'to_status' => $student->status,
+                'change_type' => 'enrollment',
+                'reason' => 'Enrolled from accepted admission application ' . $application->application_no,
+                'effective_on' => $student->date_admitted,
+                'changed_by' => Auth::guard('school')->id(),
+            ]);
+
             $application->update([
                 'status' => 'converted',
                 'student_id' => $student->id,
