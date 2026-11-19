@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Models\Tenant;
+namespace App\\Models\\Tenant;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\\Database\\Eloquent\\Model;
 
 class Student extends Model
 {
@@ -37,5 +37,10 @@ class Student extends Model
     public function resultApprovals()
     {
         return $this->hasMany(ResultApproval::class);
+    }
+
+    public function enrollmentHistory()
+    {
+        return $this->hasMany(StudentEnrollmentHistory::class)->latest('effective_on')->latest('id');
     }
 }
