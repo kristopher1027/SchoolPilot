@@ -1,16 +1,16 @@
 <?php
 
-namespace App\\Http\\Controllers\\Tenant;
+namespace App\Http\Controllers\Tenant;
 
-use App\\Http\\Controllers\\Controller;
-use App\\Models\\Tenant\\Student;
-use App\\Models\\Tenant\\Guardian;
-use App\\Models\\Tenant\\SchoolClass;
-use App\\Models\\Tenant\\Section;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Validation\\Rule;
-use Illuminate\\Validation\\ValidationException;
+use App\Http\Controllers\Controller;
+use App\Models\Tenant\Student;
+use App\Models\Tenant\Guardian;
+use App\Models\Tenant\SchoolClass;
+use App\Models\Tenant\Section;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class StudentController extends Controller
 {
