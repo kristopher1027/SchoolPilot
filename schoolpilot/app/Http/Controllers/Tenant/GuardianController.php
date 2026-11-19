@@ -147,7 +147,7 @@ class GuardianController extends Controller
             // The limit belongs to the student relationship, never to the guardian.
             // A guardian may be linked to any number of other students.
             if (! $alreadyLinked && (clone $studentGuardians)->count() >= 2) {
-                throw \\Illuminate\\Validation\\ValidationException::withMessages([
+                throw \Illuminate\Validation\ValidationException::withMessages([
                     'guardian_id' => 'A student can have no more than two guardians.',
                 ]);
             }
