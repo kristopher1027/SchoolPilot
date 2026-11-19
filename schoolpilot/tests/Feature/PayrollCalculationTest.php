@@ -248,6 +248,18 @@ class PayrollCalculationTest extends TestCase
         $this->assertFalse($result['checks']['payment_reference']['passed']);
     }
 
+    public function test_annual_payroll_export_uses_selected_year_and_safe_csv_values(): void
+    {
+        $source = file_get_contents(app_path('Http/Controllers/Tenant/PayrollController.php'));
+        $this->assertStringContainsString("public function exportAnnualReport(Request $"."request)", $source);
+        $this->assertStringContainsString("->where('year', $"."year)", $source);
+        $this->assertStringContainsString("$"."this->safeCsvValue($"."value)", $source);
+        $routes = file_get_contents(base_path('routes/web.php'));
+        $this->assertStringContainsString("'/payroll/reports/annual/export'", $routes);
+        $view = file_get_contents(resource_path('views/tenant/payroll/index.blade.php'));
+        $this->assertStringContainsString('Export annual CSV', $view);
+    }
+
     public function test_payroll_approval_requires_item_count_and_all_totals_to_match(): void
     {
         $controller = new PayrollController();

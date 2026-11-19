@@ -10,15 +10,18 @@
                 <h2 class="text-lg font-semibold text-gray-900">Payroll financial summary</h2>
                 <p class="mt-1 text-sm text-gray-500">Annual totals are grouped by currency; amounts in different currencies are never combined.</p>
             </div>
-            <form method="GET" action="{{ url('/school/'.request()->route('school').'/payroll') }}" class="flex items-end gap-2">
+            <div class="flex flex-wrap items-end gap-2">
+                <form method="GET" action="{{ url('/school/'.request()->route('school').'/payroll') }}" class="flex items-end gap-2">
                 <label class="text-sm font-medium text-gray-700">Financial year
                     <select name="year" class="mt-1 block rounded-lg border-gray-300 text-sm">
                         @foreach($availableYears as $year)<option value="{{ $year }}" @selected($selectedYear===(int)$year)>{{ $year }}</option>@endforeach
                         @if(!$availableYears->contains($selectedYear))<option value="{{ $selectedYear }}" selected>{{ $selectedYear }}</option>@endif
                     </select>
                 </label>
-                <button class="rounded-lg bg-blue-800 px-4 py-2 text-sm font-semibold text-white">View</button>
-            </form>
+                    <button class="rounded-lg bg-blue-800 px-4 py-2 text-sm font-semibold text-white">View</button>
+                </form>
+                <a href="{{ url('/school/'.request()->route('school').'/payroll/reports/annual/export?year='.$selectedYear) }}" class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Export annual CSV</a>
+            </div>
         </div>
         @if($financialSummaries->isEmpty())
             <p class="mt-4 rounded-lg bg-gray-50 p-4 text-sm text-gray-500">No payroll periods have been created for {{ $selectedYear }}.</p>
