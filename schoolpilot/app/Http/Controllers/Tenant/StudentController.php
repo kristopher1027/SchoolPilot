@@ -78,11 +78,11 @@ class StudentController extends Controller
             return $student;
         });
 
-        return redirect('/school/' . $request->route('school') . '/students/' . $student->id)
+        return redirect('/school/' . $school . '/students/' . $student->id)
             ->with('success', 'Student enrolled successfully.');
     }
 
-    public function show(Request $request, Student $student)
+    public function show(Request $request, string $school, Student $student)
     {
         $student->load([
             'section',
@@ -101,12 +101,12 @@ class StudentController extends Controller
         return view('tenant.students.show', compact('student', 'availableGuardians', 'sections', 'classes'));
     }
 
-    public function edit(Student $student)
+    public function edit(string $school, Student $student)
     {
         return view('tenant.students.edit', compact('student'));
     }
 
-    public function update(Request $request, Student $student)
+    public function update(Request $request, string $school, Student $student)
     {
         $data = $this->validatedStudentData($request, $student);
         $student->update($data);
@@ -115,7 +115,7 @@ class StudentController extends Controller
             ->with('success', 'Student personal record updated successfully.');
     }
 
-    public function changeLifecycle(Request $request, Student $student)
+    public function changeLifecycle(Request $request, string $school, Student $student)
     {
 
         $data = $request->validate([
