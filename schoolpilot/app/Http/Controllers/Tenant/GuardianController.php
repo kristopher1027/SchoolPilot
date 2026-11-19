@@ -117,19 +117,31 @@ class GuardianController extends Controller
     {
         $data = $request->validate([
             'guardian_id' => ['required', 'integer', 'exists:parents,id'],
+            'relationship' => ['required', 'string', 'max:100'],
             'is_primary' => ['sometimes', 'boolean'],
+            'is_emergency_contact' => ['sometimes', 'boolean'],
+            'can_pickup' => ['sometimes', 'boolean'],
         ]);
 
         $guardianId = (int) $data['guardian_id'];
-        $isPrimary = (bool) ($data['is_primary'] ?? false);
+        $pivotData = [
+            'relationship' => trim($data['relationship']),
+            'is_primary' => (bool) ($data['is_primary'] ?? false),
+            'is_emergency_contact' => (bool) ($data['is_emergency_contact'] ?? false),
+            'can_pickup' => (bool) ($data['can_pickup'] ?? false),
+        ];
 
-        DB::transaction(function () use ($student, $guardianId, $isPrimary) {
-            if ($isPrimary) {
+        DB::transaction(function () use ($student, $guardianId, $pivotData) {
+            if ($pivotData['is_primary']) {
                 DB::table('student_parents')->where('student_id', $student->id)->update(['is_primary' => false]);
             }
 
+            if ($pivotData['is_emergency_contact']) {
+                DB::table('student_parents')->where('student_id', $student->id)->update(['is_emergency_contact' => false]);
+            }
+
             $student->guardians()->syncWithoutDetaching([$guardianId]);
-            $student->guardians()->updateExistingPivot($guardianId, ['is_primary' => $isPrimary]);
+            $student->guardians()->updateExistingPivot($guardianId, $pivotData);
         });
 
         return back()->with('success', 'Guardian linked to student.');
