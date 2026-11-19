@@ -224,11 +224,13 @@ class TenantResultPagesTest extends TestCase
             'The fixture must link the authenticated parent to their own student.'
         );
 
-        // Tenant middleware forgets guard instances after each request,
-        // so authenticate again for this separate HTTP request.
-        $this->actingAs($parentUser, 'school')
-            ->withSession(['_school_authenticated_slug' => 'results-test'])
-            ->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}")
+        // Persist the school-guard login in the session. Tenant middleware
+        // forgets guard instances after each request, so actingAs alone is
+        // insufficient when the request resolves a fresh guard.
+        $this->withSession(['_school_authenticated_slug' => 'results-test']);
+        Auth::guard('school')->login($parentUser);
+
+        $this->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}")
             ->assertNotFound();
 
     }
