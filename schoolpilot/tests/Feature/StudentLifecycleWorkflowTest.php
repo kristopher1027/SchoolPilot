@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class StudentLifecycleWorkflowTest extends TestCase
