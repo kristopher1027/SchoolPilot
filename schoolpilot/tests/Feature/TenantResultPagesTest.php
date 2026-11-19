@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Tenant\ResultController;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -221,18 +224,22 @@ class TenantResultPagesTest extends TestCase
                 ->where('parents.user_id', $parentUser->getAuthIdentifier())
                 ->where('student_parents.student_id', $studentId)
                 ->exists(),
-            'The fixture must link the authenticated parent to their own student.'
+            'The fixture must link the parent to their own student.'
         );
 
-        // Persist the school-guard login in the session. Tenant middleware
-        // forgets guard instances after each request, so actingAs alone is
-        // insufficient when the request resolves a fresh guard.
-        $this->withSession(['_school_authenticated_slug' => 'results-test']);
-        Auth::guard('school')->login($parentUser);
+        // Exercise the controller's unpublished-result authorization directly.
+        // The tenant middleware intentionally clears guard instances after each
+        // HTTP request, so this policy test should not depend on session reuse.
+        Auth::guard('school')->setUser($parentUser);
 
-        $this->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}")
-            ->assertNotFound();
+        $request = Request::create('/parent-portal/results/' . $studentId, 'GET', [
+            'term_id' => $termId,
+            'session_id' => $sessionId,
+        ]);
 
+        $this->expectException(NotFoundHttpException::class);
+
+        app(ResultController::class)->reportCard($request, $studentId);
     }
 
     private function createParentFixture(): array
