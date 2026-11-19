@@ -168,6 +168,57 @@ class StudentLifecycleWorkflowTest extends TestCase
         ]);
     }
 
+
+    public function test_csv_import_creates_students_and_enrollment_history(): void
+    {
+        $sectionId = DB::table('sections')->insertGetId(['name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now()]);
+        $csv = "admission_no,first_name,last_name,middle_name,gender,date_of_birth,section_id,class_id,date_admitted,address,blood_group,genotype,allergies\\n"
+            . "CSV-001,Ada,Okafor,,female,2012-04-10,{$sectionId},,2026-09-01,,,,\\n";
+        $file = UploadedFile::fake()->createWithContent('students.csv', $csv);
+
+        $this->post('/school/student-lifecycle-test/students/import', ['file' => $file])
+            ->assertRedirect('/school/student-lifecycle-test/students')
+            ->assertSessionHas('success', '1 student(s) imported.');
+
+        $this->assertDatabaseHas('students', ['admission_no' => 'CSV-001', 'first_name' => 'Ada'], 'tenant_sqlite');
+        $this->assertDatabaseHas('student_enrollment_history', [
+            'change_type' => 'enrollment',
+            'reason' => 'Initial enrollment via CSV import',
+            'changed_by' => $this->adminId,
+        ], 'tenant_sqlite');
+    }
+
+    public function test_csv_import_skips_duplicate_and_invalid_rows_without_creating_them(): void
+    {
+        $sectionId = DB::table('sections')->insertGetId(['name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now()]);
+        $csv = "admission_no,first_name,last_name,gender,date_of_birth,section_id,date_admitted\\n"
+            . "DUP-001,Ada,Okafor,female,2012-04-10,{$sectionId},2026-09-01\\n"
+            . "DUP-001,Eva,Okafor,female,2012-04-10,{$sectionId},2026-09-01\\n"
+            . "BAD-001,Sam,Okafor,unknown,2012-04-10,{$sectionId},2026-09-01\\n";
+        $file = UploadedFile::fake()->createWithContent('students.csv', $csv);
+
+        $this->post('/school/student-lifecycle-test/students/import', ['file' => $file])
+            ->assertRedirect('/school/student-lifecycle-test/students')
+            ->assertSessionHas('success', '1 student(s) imported.')
+            ->assertSessionHas('import_errors');
+
+        $this->assertDatabaseHas('students', ['admission_no' => 'DUP-001'], 'tenant_sqlite');
+        $this->assertDatabaseMissing('students', ['admission_no' => 'BAD-001'], 'tenant_sqlite');
+        $this->assertDatabaseCount('student_enrollment_history', 1, 'tenant_sqlite');
+    }
+
+    public function test_student_csv_export_returns_a_csv_download(): void
+    {
+        $sectionId = DB::table('sections')->insertGetId(['name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now()]);
+        $classId = DB::table('classes')->insertGetId(['section_id' => $sectionId, 'name' => 'Primary 1', 'level' => 1, 'created_at' => now(), 'updated_at' => now()]);
+        $this->createStudent($sectionId, $classId);
+
+        $this->get('/school/student-lifecycle-test/students/export')
+            ->assertOk()
+            ->assertHeader('content-type', 'text/csv; charset=UTF-8')
+            ->assertHeader('content-disposition');
+    }
+
     public function test_promotion_updates_placement_and_records_auditable_history(): void
     {
         $sectionId = DB::table('sections')->insertGetId(['name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now()]);
