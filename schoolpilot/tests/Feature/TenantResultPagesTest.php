@@ -261,7 +261,11 @@ class TenantResultPagesTest extends TestCase
         $this->assertSame('parent', $diagnostic['role']);
         $this->assertTrue($diagnostic['linked_to_student'], 'Tenant request could not see the parent-child relationship.');
 
-        $this->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}")
+        // Tenant middleware forgets guard instances after each request,
+        // so authenticate again for this separate HTTP request.
+        $this->actingAs($parentUser, 'school')
+            ->withSession(['_school_authenticated_slug' => 'results-test'])
+            ->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}")
             ->assertNotFound();
 
     }
