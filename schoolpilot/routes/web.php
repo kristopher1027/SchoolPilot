@@ -327,6 +327,7 @@ Route::prefix('school/{school}')->group(function () {
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar')->group(function () {
                 Route::get('/payroll', [PayrollController::class, 'index']);
+                Route::get('/payroll/reports/annual/export', [PayrollController::class, 'exportAnnualReport']);
                 Route::post('/payroll/components', [PayrollController::class, 'storeComponent']);
                 Route::post('/payroll/assignments', [PayrollController::class, 'storeAssignment']);
                 Route::post('/payroll/periods', [PayrollController::class, 'storePeriod']);
