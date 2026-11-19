@@ -265,6 +265,77 @@ class StudentLifecycleWorkflowTest extends TestCase
         $this->assertDatabaseHas('student_parents', ['student_id' => $studentId, 'parent_id' => $guardianIds[1], 'is_primary' => 1, 'is_emergency_contact' => 1], 'tenant_sqlite');
     }
 
+    public function test_guardian_can_link_to_multiple_students_but_each_student_is_limited_to_two_guardians(): void
+    {
+        $sectionOne = DB::connection('tenant_sqlite')->table('sections')->insertGetId([
+            'name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $classOne = DB::connection('tenant_sqlite')->table('classes')->insertGetId([
+            'section_id' => $sectionOne, 'name' => 'Primary 1', 'level' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $studentOne = $this->createStudent($sectionOne, $classOne);
+
+        $sectionTwo = DB::connection('tenant_sqlite')->table('sections')->insertGetId([
+            'name' => 'Secondary', 'code' => 'SEC', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $classTwo = DB::connection('tenant_sqlite')->table('classes')->insertGetId([
+            'section_id' => $sectionTwo, 'name' => 'JSS 1', 'level' => 7, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $studentTwo = DB::connection('tenant_sqlite')->table('students')->insertGetId([
+            'admission_no' => 'STU-002', 'first_name' => 'Bola', 'last_name' => 'Okafor',
+            'gender' => 'female', 'date_of_birth' => '2011-05-12', 'section_id' => $sectionTwo,
+            'class_id' => $classTwo, 'date_admitted' => '2024-09-01', 'status' => 'active',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $createGuardian = function (string $name, string $email): int {
+            $userId = DB::connection('tenant_sqlite')->table('users')->insertGetId([
+                'name' => $name, 'email' => $email,
+                'password' => Hash::make('Secure-Test-Password-2026'),
+                'role' => 'parent', 'is_active' => true,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+
+            return DB::connection('tenant_sqlite')->table('parents')->insertGetId([
+                'user_id' => $userId, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        };
+
+        $sharedGuardian = $createGuardian('Shared Guardian', 'shared@example.test');
+        $secondGuardian = $createGuardian('Second Guardian', 'second@example.test');
+        $thirdGuardian = $createGuardian('Third Guardian', 'third@example.test');
+
+        $this->post('/school/student-lifecycle-test/students/' . $studentOne . '/guardians', [
+            'guardian_id' => $sharedGuardian, 'relationship' => 'Mother', 'is_primary' => '1',
+        ])->assertSessionHas('success', 'Guardian linked to student.');
+
+        $this->post('/school/student-lifecycle-test/students/' . $studentOne . '/guardians', [
+            'guardian_id' => $secondGuardian, 'relationship' => 'Father', 'is_emergency_contact' => '1',
+        ])->assertSessionHas('success', 'Guardian linked to student.');
+
+        $this->post('/school/student-lifecycle-test/students/' . $studentTwo . '/guardians', [
+            'guardian_id' => $sharedGuardian, 'relationship' => 'Aunt', 'is_emergency_contact' => '1',
+        ])->assertSessionHas('success', 'Guardian linked to student.');
+
+        $this->post('/school/student-lifecycle-test/students/' . $studentOne . '/guardians', [
+            'guardian_id' => $thirdGuardian, 'relationship' => 'Uncle',
+        ])->assertSessionHasErrors('guardian_id');
+
+        $this->assertDatabaseHas('student_parents', [
+            'student_id' => $studentOne, 'parent_id' => $sharedGuardian,
+            'relationship' => 'Mother', 'is_primary' => 1,
+        ], 'tenant_sqlite');
+        $this->assertDatabaseHas('student_parents', [
+            'student_id' => $studentTwo, 'parent_id' => $sharedGuardian,
+            'relationship' => 'Aunt', 'is_primary' => 0, 'is_emergency_contact' => 1,
+        ], 'tenant_sqlite');
+        $this->assertDatabaseMissing('student_parents', [
+            'student_id' => $studentOne, 'parent_id' => $thirdGuardian,
+        ], 'tenant_sqlite');
+        $this->assertSame(2, DB::connection('tenant_sqlite')->table('student_parents')
+            ->where('student_id', $studentOne)->count());
+    }
+
     public function test_csv_import_creates_students_and_enrollment_history(): void
     {
         $sectionId = DB::table('sections')->insertGetId(['name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now()]);
