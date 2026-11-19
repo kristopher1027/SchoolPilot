@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Validator;
 
 class StudentController extends Controller
 {
@@ -44,6 +45,155 @@ class StudentController extends Controller
         $classes = SchoolClass::query()->orderBy('name')->get();
 
         return view('tenant.students.index', compact('students', 'sections', 'classes'));
+    }
+
+    public function exportCsv(Request $request)
+    {
+        $query = Student::query()->with(['section', 'schoolClass']);
+
+        foreach (['section_id', 'class_id', 'status'] as $filter) {
+            if ($request->filled($filter)) {
+                $query->where($filter, $request->input($filter));
+            }
+        }
+
+        if ($search = trim((string) $request->query('search', ''))) {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('admission_no', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('middle_name', 'like', "%{$search}%");
+            });
+        }
+
+        $students = $query->orderBy('last_name')->orderBy('first_name')->get();
+        $filename = 'students-' . now()->format('Y-m-d-His') . '.csv';
+
+        return response()->streamDownload(function () use ($students) {
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['admission_no', 'first_name', 'last_name', 'middle_name', 'gender', 'date_of_birth', 'section_id', 'class_id', 'date_admitted', 'status', 'address', 'blood_group', 'genotype', 'allergies']);
+
+            foreach ($students as $student) {
+                fputcsv($output, [
+                    $student->admission_no, $student->first_name, $student->last_name,
+                    $student->middle_name, $student->gender, $student->date_of_birth?->format('Y-m-d'),
+                    $student->section_id, $student->class_id, $student->date_admitted?->format('Y-m-d'),
+                    $student->status, $student->address, $student->blood_group, $student->genotype, $student->allergies,
+                ]);
+            }
+
+            fclose($output);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function downloadImportTemplate()
+    {
+        return response()->streamDownload(function () {
+            $output = fopen('php://output', 'w');
+            fputcsv($output, ['admission_no', 'first_name', 'last_name', 'middle_name', 'gender', 'date_of_birth', 'section_id', 'class_id', 'date_admitted', 'address', 'blood_group', 'genotype', 'allergies']);
+            fclose($output);
+        }, 'student-import-template.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function importCsv(Request $request)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'max:2048', 'mimes:csv,txt'],
+        ]);
+
+        $handle = fopen($request->file('file')->getRealPath(), 'r');
+        if ($handle === false) {
+            return back()->withErrors(['file' => 'The uploaded CSV file could not be read.']);
+        }
+
+        $headers = fgetcsv($handle);
+        if (! is_array($headers)) {
+            fclose($handle);
+            return back()->withErrors(['file' => 'The CSV file is empty or has an invalid header.']);
+        }
+
+        $headers = array_map(fn ($header) => strtolower(trim(preg_replace('/^\\xEF\\xBB\\xBF/', '', (string) $header))), $headers);
+        $requiredHeaders = ['admission_no', 'first_name', 'last_name', 'gender', 'date_of_birth', 'section_id', 'date_admitted'];
+        if (array_diff($requiredHeaders, $headers)) {
+            fclose($handle);
+            return back()->withErrors(['file' => 'Missing required columns. Download the template and keep its column names.']);
+        }
+
+        $created = 0;
+        $errors = [];
+        $seenAdmissionNumbers = [];
+        $rowNumber = 1;
+
+        while (($values = fgetcsv($handle)) !== false) {
+            $rowNumber++;
+            if (count(array_filter($values, fn ($value) => trim((string) $value) !== '')) === 0) {
+                continue;
+            }
+
+            if ($rowNumber > 501) {
+                $errors[] = 'Import stopped: the maximum is 500 data rows per upload.';
+                break;
+            }
+
+            $values = array_slice(array_pad($values, count($headers), null), 0, count($headers));
+            $row = array_combine($headers, $values);
+            $validator = Validator::make($row, [
+                'admission_no' => ['required', 'string', 'max:255'],
+                'first_name' => ['required', 'string', 'max:255'],
+                'last_name' => ['required', 'string', 'max:255'],
+                'middle_name' => ['nullable', 'string', 'max:255'],
+                'gender' => ['required', Rule::in(['male', 'female'])],
+                'date_of_birth' => ['required', 'date', 'before:today'],
+                'section_id' => ['required', 'integer', 'exists:sections,id'],
+                'class_id' => ['nullable', 'integer', 'exists:classes,id'],
+                'date_admitted' => ['required', 'date'],
+                'address' => ['nullable', 'string', 'max:5000'],
+                'blood_group' => ['nullable', 'string', 'max:10'],
+                'genotype' => ['nullable', 'string', 'max:10'],
+                'allergies' => ['nullable', 'string', 'max:5000'],
+            ]);
+
+            if ($validator->fails()) {
+                $errors[] = "Row {$rowNumber}: " . implode(' ', $validator->errors()->all());
+                continue;
+            }
+
+            $data = $validator->validated();
+            $admissionNumber = trim($data['admission_no']);
+            if (isset($seenAdmissionNumbers[$admissionNumber]) || Student::query()->where('admission_no', $admissionNumber)->exists()) {
+                $errors[] = "Row {$rowNumber}: admission number '{$admissionNumber}' already exists.";
+                continue;
+            }
+
+            if (! $this->classBelongsToSection($data)) {
+                $errors[] = "Row {$rowNumber}: the selected class does not belong to the selected section.";
+                continue;
+            }
+
+            $data['admission_no'] = $admissionNumber;
+            $data['status'] = 'active';
+            DB::transaction(function () use ($data) {
+                $student = Student::create($data);
+                $student->enrollmentHistory()->create([
+                    'to_section_id' => $student->section_id,
+                    'to_class_id' => $student->class_id,
+                    'to_status' => $student->status,
+                    'change_type' => 'enrollment',
+                    'reason' => 'Initial enrollment via CSV import',
+                    'effective_on' => $student->date_admitted,
+                    'changed_by' => auth('school')->id(),
+                ]);
+            });
+
+            $seenAdmissionNumbers[$admissionNumber] = true;
+            $created++;
+        }
+
+        fclose($handle);
+
+        return redirect('/school/' . $request->route('school') . '/students')
+            ->with('success', "{$created} student(s) imported.")
+            ->with('import_errors', array_slice($errors, 0, 50));
     }
 
     public function create()
