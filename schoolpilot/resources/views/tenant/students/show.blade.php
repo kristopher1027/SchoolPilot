@@ -98,7 +98,7 @@
             <div class="space-y-3 mb-5">
                 @foreach($student->guardians as $guardian)
                     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border rounded p-3">
-                        <div><p class="font-medium text-gray-800">{{ $guardian->user?->name ?? 'Unknown' }} @if($guardian->pivot->is_primary)<span class="ml-2 text-xs bg-blue-100 text-blue-700 rounded px-2 py-1">Primary contact</span>@endif</p><p class="text-sm text-gray-600">{{ $guardian->relationship ?: 'Guardian' }} · {{ $guardian->user?->phone ?: 'No phone' }} · {{ $guardian->user?->email }}</p></div>
+                        <div><p class="font-medium text-gray-800">{{ $guardian->user?->name ?? 'Unknown' }} @if($guardian->pivot->is_primary)<span class="ml-2 text-xs bg-blue-100 text-blue-700 rounded px-2 py-1">Primary contact</span>@endif</p><p class="text-sm text-gray-600">{{ $guardian->pivot->relationship ?: 'Guardian' }} · {{ $guardian->user?->phone ?: 'No phone' }} · {{ $guardian->user?->email }} @if($guardian->pivot->is_emergency_contact)<span class="ml-2 text-xs bg-amber-100 text-amber-800 rounded px-2 py-1">Emergency contact</span>@endif @if($guardian->pivot->can_pickup)<span class="ml-2 text-xs bg-gray-100 text-gray-700 rounded px-2 py-1">Pickup authorized</span>@endif</p></div>
                         <form method="POST" action="{{ url('/school/' . request()->route('school') . '/students/' . $student->id . '/guardians/' . $guardian->id) }}" onsubmit="return confirm('Unlink this guardian from the student?')">@csrf @method('DELETE')<button class="text-sm text-red-600 hover:underline">Unlink</button></form>
                     </div>
                 @endforeach
@@ -110,7 +110,12 @@
             <form method="POST" action="{{ url('/school/' . request()->route('school') . '/students/' . $student->id . '/guardians') }}" class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                 @csrf
                 <label class="text-sm text-gray-700 sm:col-span-2">Select guardian<select name="guardian_id" required class="mt-1 w-full rounded-md border-gray-300"><option value="">Choose a parent / guardian</option>@foreach($availableGuardians as $guardian)<option value="{{ $guardian->id }}">{{ $guardian->user?->name }} — {{ $guardian->user?->email }}</option>@endforeach</select></label>
-                <label class="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="is_primary" value="1"> Set as primary</label>
+                <label class="text-sm text-gray-700">Relationship to this student<input name="relationship" required maxlength="100" value="{{ old('relationship') }}" placeholder="Mother, father, aunt..." class="mt-1 w-full rounded-md border-gray-300"></label>
+                <div class="sm:col-span-3 flex flex-wrap gap-4 text-sm text-gray-700">
+                    <label class="flex items-center gap-2"><input type="checkbox" name="is_primary" value="1"> Primary contact</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="is_emergency_contact" value="1"> Emergency contact</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="can_pickup" value="1"> Authorized to pick up student</label>
+                </div>
                 <div class="sm:col-span-3"><button class="bg-blue-600 text-white px-4 py-2 rounded">Link Guardian</button></div>
             </form>
         @else
