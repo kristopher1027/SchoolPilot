@@ -159,6 +159,47 @@ class PayrollCalculationTest extends TestCase
         }
     }
 
+    public function test_annual_payroll_summaries_keep_currencies_separate_and_count_statuses(): void
+    {
+        Schema::dropIfExists('payroll_periods');
+        Schema::create('payroll_periods', function ($table) {
+            $table->id();
+            $table->unsignedSmallInteger('year');
+            $table->unsignedTinyInteger('month');
+            $table->string('currency', 3);
+            $table->string('status');
+            $table->unsignedInteger('staff_count')->default(0);
+            $table->decimal('gross_total', 16, 2)->default(0);
+            $table->decimal('deductions_total', 16, 2)->default(0);
+            $table->decimal('net_total', 16, 2)->default(0);
+        });
+
+        try {
+            DB::table('payroll_periods')->insert([
+                ['year' => 2026, 'month' => 1, 'currency' => 'NGN', 'status' => 'paid', 'staff_count' => 4, 'gross_total' => 500000, 'deductions_total' => 50000, 'net_total' => 450000],
+                ['year' => 2026, 'month' => 2, 'currency' => 'NGN', 'status' => 'draft', 'staff_count' => 4, 'gross_total' => 520000, 'deductions_total' => 52000, 'net_total' => 468000],
+                ['year' => 2026, 'month' => 1, 'currency' => 'USD', 'status' => 'approved', 'staff_count' => 2, 'gross_total' => 1000, 'deductions_total' => 100, 'net_total' => 900],
+                ['year' => 2025, 'month' => 12, 'currency' => 'NGN', 'status' => 'paid', 'staff_count' => 3, 'gross_total' => 300000, 'deductions_total' => 30000, 'net_total' => 270000],
+            ]);
+
+            $controller = new PayrollController();
+            $method = new ReflectionMethod($controller, 'financialSummariesForYear');
+            $method->setAccessible(true);
+            $summaries = $method->invoke($controller, 2026)->get()->keyBy('currency');
+
+            $this->assertCount(2, $summaries);
+            $this->assertSame(2, (int) $summaries['NGN']->period_count);
+            $this->assertSame(1, (int) $summaries['NGN']->draft_count);
+            $this->assertSame(1, (int) $summaries['NGN']->paid_count);
+            $this->assertEquals(1020000, (float) $summaries['NGN']->gross_total);
+            $this->assertEquals(918000, (float) $summaries['NGN']->net_total);
+            $this->assertSame(1, (int) $summaries['USD']->approved_count);
+            $this->assertEquals(1000, (float) $summaries['USD']->gross_total);
+        } finally {
+            Schema::dropIfExists('payroll_periods');
+        }
+    }
+
     public function test_payroll_approval_requires_item_count_and_all_totals_to_match(): void
     {
         $controller = new PayrollController();
