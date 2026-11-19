@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Guardian extends Model
 {
+    /** Tenant records must always resolve against the active school's database. */
+    protected $connection = 'tenant_sqlite';
+
     protected $table = 'parents';
 
     protected $fillable = ['user_id', 'occupation', 'address', 'relationship'];
