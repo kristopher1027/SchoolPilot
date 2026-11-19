@@ -38,4 +38,9 @@ class Student extends Model
     {
         return $this->hasMany(ResultApproval::class);
     }
+
+    public function enrollmentHistory()
+    {
+        return $this->hasMany(StudentEnrollmentHistory::class)->latest('effective_on')->latest('id');
+    }
 }
