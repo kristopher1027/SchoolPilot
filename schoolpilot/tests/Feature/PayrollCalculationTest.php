@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Tenant\PayrollController;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -76,6 +78,46 @@ class PayrollCalculationTest extends TestCase
         $method->setAccessible(true);
 
         $this->assertTrue($method->invoke($controller, (object) ['approved_by' => null], 23));
+    }
+
+    public function test_salary_changes_cannot_rewrite_generated_payroll_periods(): void
+    {
+        Schema::dropIfExists('payroll_items');
+        Schema::dropIfExists('payroll_periods');
+
+        Schema::create('payroll_periods', function ($table) {
+            $table->id();
+            $table->unsignedSmallInteger('year');
+            $table->unsignedTinyInteger('month');
+        });
+        Schema::create('payroll_items', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('payroll_period_id');
+            $table->unsignedBigInteger('staff_id');
+        });
+
+        try {
+            $periodId = DB::table('payroll_periods')->insertGetId([
+                'year' => 2026,
+                'month' => 11,
+            ]);
+            DB::table('payroll_items')->insert([
+                'payroll_period_id' => $periodId,
+                'staff_id' => 7,
+            ]);
+
+            $controller = new PayrollController();
+            $method = new ReflectionMethod($controller, 'hasGeneratedPayrollOnOrAfter');
+            $method->setAccessible(true);
+
+            $this->assertTrue($method->invoke($controller, 7, '2026-11-01'));
+            $this->assertTrue($method->invoke($controller, 7, '2026-11-30'));
+            $this->assertFalse($method->invoke($controller, 7, '2026-12-01'));
+            $this->assertFalse($method->invoke($controller, 8, '2026-11-01'));
+        } finally {
+            Schema::dropIfExists('payroll_items');
+            Schema::dropIfExists('payroll_periods');
+        }
     }
 
     public function test_payroll_approval_requires_item_count_and_all_totals_to_match(): void
