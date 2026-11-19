@@ -245,8 +245,16 @@ class PayrollController extends Controller
         abort_unless($payroll, 404);
         $items = DB::table('payroll_items')->where('payroll_period_id', $period)->orderBy('staff_name')->get();
         $reconciliation = $this->reconcilePayroll($payroll, $items);
+        $auditHistory = DB::table('audit_logs as logs')
+            ->leftJoin('users as users', 'users.id', '=', 'logs.user_id')
+            ->where('logs.entity_type', 'payroll_period')
+            ->where('logs.entity_id', $period)
+            ->select('logs.action', 'logs.old_value', 'logs.new_value', 'logs.created_at', 'users.name as actor_name')
+            ->orderByDesc('logs.id')
+            ->limit(50)
+            ->get();
 
-        return view('tenant.payroll.show', compact('payroll', 'items', 'reconciliation'));
+        return view('tenant.payroll.show', compact('payroll', 'items', 'reconciliation', 'auditHistory'));
     }
 
     public function export(Request $request, int $period)

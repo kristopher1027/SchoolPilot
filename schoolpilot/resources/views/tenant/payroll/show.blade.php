@@ -59,6 +59,33 @@
         @endif
     </section>
 
+    <section class="rounded-xl bg-white p-5 shadow">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div><h2 class="font-semibold text-gray-900">Payroll activity history</h2><p class="mt-1 text-sm text-gray-500">Latest recorded actions for this payroll period, newest first.</p></div>
+            <span class="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">{{ $auditHistory->count() }} events shown</span>
+        </div>
+        @if($auditHistory->isEmpty())
+            <p class="mt-4 text-sm text-gray-500">No activity has been recorded for this payroll period yet.</p>
+        @else
+            <ol class="mt-4 space-y-4">
+                @foreach($auditHistory as $event)
+                    <li class="flex gap-3 border-l-2 border-gray-200 pl-4">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-semibold text-gray-900">{{ ucwords(str_replace(['payroll.', '_'], ['', ' '], $event->action)) }}</p>
+                            <p class="mt-1 text-xs text-gray-500">{{ $event->actor_name ?: 'System / unavailable user' }} · {{ \Illuminate\Support\Carbon::parse($event->created_at)->format('d M Y, H:i') }}</p>
+                            @if($event->new_value)
+                                <details class="mt-2">
+                                    <summary class="cursor-pointer text-xs font-medium text-blue-800">View recorded details</summary>
+                                    <pre class="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg bg-gray-50 p-3 text-xs text-gray-700">{{ json_encode(json_decode($event->new_value, true), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                                </details>
+                            @endif
+                        </div>
+                    </li>
+                @endforeach
+            </ol>
+        @endif
+    </section>
+
     <section class="overflow-hidden rounded-xl bg-white shadow">
         <div class="border-b p-4"><h2 class="font-semibold text-gray-900">Payroll items</h2><p class="mt-1 text-xs text-gray-500">Amounts are snapshots from salary assignments at the time the draft was generated.</p></div>
         <div class="overflow-x-auto"><table class="w-full text-left text-sm">
