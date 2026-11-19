@@ -239,6 +239,49 @@ class PayrollController extends Controller
         return redirect($this->schoolPath($request, '/payroll/'.$id))->with('success', 'Payroll period created. Generate the draft to calculate staff pay.');
     }
 
+    public function exportAnnualReport(Request $request)
+    {
+        $filters = $request->validate([
+            'year' => ['required', 'integer', 'between:2020,2100'],
+        ]);
+        $year = (int) $filters['year'];
+        $periods = DB::table('payroll_periods')
+            ->where('year', $year)
+            ->orderBy('currency')
+            ->orderBy('month')
+            ->get();
+
+        $filename = sprintf('schoolpilot-payroll-annual-%04d.csv', $year);
+
+        return response()->streamDownload(function () use ($periods) {
+            $output = fopen('php://output', 'w');
+            fputcsv($output, [
+                'Year', 'Month', 'Currency', 'Status', 'Staff count',
+                'Gross payroll', 'Deductions', 'Net payroll', 'Payment reference',
+                'Created at', 'Approved at', 'Paid at',
+            ]);
+
+            foreach ($periods as $period) {
+                fputcsv($output, array_map(fn ($value) => $this->safeCsvValue($value), [
+                    $period->year,
+                    $period->month,
+                    $period->currency,
+                    $period->status,
+                    $period->staff_count,
+                    $period->gross_total,
+                    $period->deductions_total,
+                    $period->net_total,
+                    $period->payment_reference,
+                    $period->created_at,
+                    $period->approved_at,
+                    $period->paid_at,
+                ]));
+            }
+
+            fclose($output);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     public function show(Request $request, int $period)
     {
         $payroll = DB::table('payroll_periods')->where('id', $period)->first();
