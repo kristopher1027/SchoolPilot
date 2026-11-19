@@ -268,6 +268,9 @@ Route::prefix('school/{school}')->group(function () {
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,dean')->group(function () {
                 Route::get('/students', [StudentController::class, 'index']);
+                Route::get('/students/export', [StudentController::class, 'exportCsv']);
+                Route::get('/students/import/template', [StudentController::class, 'downloadImportTemplate']);
+                Route::post('/students/import', [StudentController::class, 'importCsv'])->middleware('throttle:5,1');
                 Route::get('/students/create', [StudentController::class, 'create']);
                 Route::post('/students', [StudentController::class, 'store']);
                 Route::get('/students/{student}', [StudentController::class, 'show'])->whereNumber('student');
