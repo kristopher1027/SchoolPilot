@@ -9,6 +9,12 @@
             <form method="POST" action="{{ url('/school/'.request()->route('school').'/payroll/'.$payroll->id.'/approve') }}">@csrf<button class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white">Approve payroll</button></form>
         @endif
     </div>
+    <div class="flex justify-end">
+        <a href="{{ url('/school/'.request()->route('school').'/payroll/'.$payroll->id.'/export') }}"
+           class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+            Download payroll register (CSV)
+        </a>
+    </div>
     <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         @foreach([['Staff',$payroll->staff_count],['Gross pay',number_format($payroll->gross_total,2)],['Deductions',number_format($payroll->deductions_total,2)],['Net pay',number_format($payroll->net_total,2)]] as [$label,$value])
             <div class="rounded-xl bg-white p-4 shadow"><p class="text-sm text-gray-500">{{ $label }}</p><p class="mt-2 text-xl font-bold text-gray-900">{{ $value }}</p><p class="text-xs text-gray-400">{{ $label==='Staff'?'members':$payroll->currency }}</p></div>

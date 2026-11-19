@@ -331,6 +331,7 @@ Route::prefix('school/{school}')->group(function () {
                 Route::post('/payroll/assignments', [PayrollController::class, 'storeAssignment']);
                 Route::post('/payroll/periods', [PayrollController::class, 'storePeriod']);
                 Route::get('/payroll/{period}', [PayrollController::class, 'show'])->whereNumber('period');
+                Route::get('/payroll/{period}/export', [PayrollController::class, 'export'])->whereNumber('period');
                 Route::post('/payroll/{period}/generate', [PayrollController::class, 'generate'])->whereNumber('period');
                 Route::post('/payroll/{period}/approve', [PayrollController::class, 'approve'])->whereNumber('period');
                 Route::post('/payroll/{period}/paid', [PayrollController::class, 'markPaid'])->whereNumber('period');
