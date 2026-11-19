@@ -80,6 +80,17 @@ class PayrollCalculationTest extends TestCase
         $this->assertTrue($method->invoke($controller, (object) ['approved_by' => null], 23));
     }
 
+    public function test_monthly_salary_changes_must_start_on_first_day_of_month(): void
+    {
+        $controller = new PayrollController();
+        $method = new ReflectionMethod($controller, 'isFirstDayOfMonth');
+        $method->setAccessible(true);
+
+        $this->assertTrue($method->invoke($controller, '2026-12-01'));
+        $this->assertFalse($method->invoke($controller, '2026-12-02'));
+        $this->assertFalse($method->invoke($controller, '2026-11-30'));
+    }
+
     public function test_salary_changes_cannot_rewrite_generated_payroll_periods(): void
     {
         Schema::dropIfExists('payroll_items');
