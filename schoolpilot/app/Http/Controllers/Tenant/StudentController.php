@@ -149,7 +149,7 @@ class StudentController extends Controller
             $changeType = match (true) {
                 $statusChanged && $data['status'] !== 'active' => $data['status'],
                 $placementChanged && $fromSectionId !== (int) $data['section_id'] => 'section_transfer',
-                $placementChanged && $this->isPromotion($fromClassId, $data['class_id'] ?? null) => 'promotion',
+                $placementChanged && $this->isPromotion($fromClassId, isset($data['class_id']) ? (int) $data['class_id'] : null) => 'promotion',
                 $placementChanged => 'class_placement',
                 default => 'status_change',
             };
