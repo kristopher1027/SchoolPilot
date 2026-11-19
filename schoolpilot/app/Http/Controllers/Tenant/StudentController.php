@@ -78,7 +78,7 @@ class StudentController extends Controller
             return $student;
         });
 
-        return redirect('/school/' . $school . '/students/' . $student->id)
+        return redirect('/school/' . $request->route('school') . '/students/' . $student->id)
             ->with('success', 'Student enrolled successfully.');
     }
 
