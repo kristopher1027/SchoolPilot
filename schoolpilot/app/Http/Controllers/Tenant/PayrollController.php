@@ -69,6 +69,14 @@ class PayrollController extends Controller
             return back()->withErrors(['effective_from' => 'An active salary assignment already starts on or after this date. End or deactivate it first.'])->withInput();
         }
 
+        // A generated payroll is a historical snapshot. Do not introduce a
+        // salary assignment whose effective date would rewrite that history.
+        if ($this->hasGeneratedPayrollOnOrAfter((int) $data['staff_id'], $start)) {
+            return back()->withErrors([
+                'effective_from' => 'This date overlaps a payroll period that already has generated items. Choose a date after the latest generated payroll period.',
+            ])->withInput();
+        }
+
         $actor = Auth::guard('school')->user();
         $id = DB::transaction(function () use ($data, $start, $actor, $request) {
             DB::table('staff_salary_assignments')->where('staff_id', $data['staff_id'])
@@ -331,6 +339,18 @@ class PayrollController extends Controller
         abort_unless($payslip, 404);
 
         return view('tenant.payroll.payslip', compact('payslip'));
+    }
+
+    private function hasGeneratedPayrollOnOrAfter(int $staffId, string $effectiveFrom): bool
+    {
+        return DB::table('payroll_items as pi')
+            ->join('payroll_periods as pp', 'pp.id', '=', 'pi.payroll_period_id')
+            ->where('pi.staff_id', $staffId)
+            ->whereRaw(
+                "date(printf('%04d-%02d-01', pp.year, pp.month), '+1 month', '-1 day') >= ?",
+                [$effectiveFrom]
+            )
+            ->exists();
     }
 
     private function isValidComponentValue(string $calculation, float $value): bool
