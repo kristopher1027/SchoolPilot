@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Route;
+use App\Http\Middleware\EnsureActiveUser;
+use App\Http\Middleware\RoleMiddleware;
 use Tests\TestCase;
 
 class TenantResultPagesTest extends TestCase
@@ -224,28 +227,43 @@ class TenantResultPagesTest extends TestCase
             'The fixture must link the authenticated parent to their own student.'
         );
 
-        // Let the original HTTP exception escape so CI identifies the exact
-        // authorization layer producing the unexpected 403.
-        $this->withoutExceptionHandling();
+        // Probe the same tenant/auth middleware stack independently of the
+        // report-card controller to verify the identity and ownership query
+        // seen during an actual tenant request.
+        Route::middleware([
+            'web',
+            'auth:school',
+            EnsureActiveUser::class,
+            RoleMiddleware::class . ':parent',
+        ])->get('/school/{school}/_test-parent-auth', function () use ($studentId) {
+            $requestUser = Auth::guard('school')->user();
 
-        try {
-            $this->actingAs($parentUser, 'school')
-                ->withSession(['_school_authenticated_slug' => 'results-test'])
-                ->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}");
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
-            $trace = $exception->getTrace();
-            $origin = $trace[0] ?? [];
+            return response()->json([
+                'user_id' => $requestUser?->getAuthIdentifier(),
+                'role' => $requestUser?->role,
+                'linked_to_student' => $requestUser
+                    ? DB::connection('tenant_sqlite')->table('student_parents')
+                        ->join('parents', 'parents.id', '=', 'student_parents.parent_id')
+                        ->where('parents.user_id', $requestUser->getAuthIdentifier())
+                        ->where('student_parents.student_id', $studentId)
+                        ->exists()
+                    : false,
+            ]);
+        });
 
-            $this->fail(sprintf(
-                'Report-card request threw HTTP %d: %s. Origin: %s:%s',
-                $exception->getStatusCode(),
-                $exception->getMessage(),
-                $origin['file'] ?? 'unknown',
-                $origin['line'] ?? 'unknown'
-            ));
-        }
+        $diagnostic = $this->actingAs($parentUser, 'school')
+            ->withSession(['_school_authenticated_slug' => 'results-test'])
+            ->get('/school/results-test/_test-parent-auth')
+            ->assertOk()
+            ->json();
 
-        $this->fail('Expected an unpublished report card to throw HTTP 404.');
+        $this->assertSame((string) $parentUserId, (string) $diagnostic['user_id'], 'Tenant request authenticated a different parent user.');
+        $this->assertSame('parent', $diagnostic['role']);
+        $this->assertTrue($diagnostic['linked_to_student'], 'Tenant request could not see the parent-child relationship.');
+
+        $this->get("/school/results-test/parent-portal/results/{$studentId}?term_id={$termId}&session_id={$sessionId}")
+            ->assertNotFound();
+
     }
 
     private function createParentFixture(): array
