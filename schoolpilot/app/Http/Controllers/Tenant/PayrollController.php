@@ -346,11 +346,17 @@ class PayrollController extends Controller
         return DB::table('payroll_items as pi')
             ->join('payroll_periods as pp', 'pp.id', '=', 'pi.payroll_period_id')
             ->where('pi.staff_id', $staffId)
-            ->whereRaw(
-                "date(printf('%04d-%02d-01', pp.year, pp.month), '+1 month', '-1 day') >= ?",
-                [$effectiveFrom]
-            )
-            ->exists();
+            ->select('pp.year', 'pp.month')
+            ->get()
+            ->contains(function ($period) use ($effectiveFrom) {
+                $periodEnd = Carbon::createFromDate(
+                    (int) $period->year,
+                    (int) $period->month,
+                    1
+                )->endOfMonth()->toDateString();
+
+                return $periodEnd >= $effectiveFrom;
+            });
     }
 
     private function isValidComponentValue(string $calculation, float $value): bool
