@@ -80,6 +80,21 @@ class PayrollCalculationTest extends TestCase
         $this->assertTrue($method->invoke($controller, (object) ['approved_by' => null], 23));
     }
 
+    public function test_payslip_uses_tenant_school_identity_and_logo(): void
+    {
+        $controller = new PayrollController();
+        $method = new ReflectionMethod($controller, 'payslip');
+        $method->setAccessible(true);
+
+        $this->assertSame('payslip', $method->getName());
+        $source = file_get_contents(app_path('Http/Controllers/Tenant/PayrollController.php'));
+        $this->assertStringContainsString("DB::table('settings')->pluck('value', 'key')", $source);
+        $this->assertStringContainsString("Storage::disk('public')->url", $source);
+        $view = file_get_contents(resource_path('views/tenant/payroll/payslip.blade.php'));
+        $this->assertStringContainsString("$"."schoolSettings->get('school_name'", $view);
+        $this->assertStringContainsString("$"."schoolLogoUrl", $view);
+    }
+
     public function test_payroll_register_csv_values_are_safe_from_formula_injection(): void
     {
         $controller = new PayrollController();

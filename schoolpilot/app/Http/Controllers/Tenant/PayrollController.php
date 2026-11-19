@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class PayrollController extends Controller
@@ -390,7 +391,12 @@ class PayrollController extends Controller
             ->first();
         abort_unless($payslip, 404);
 
-        return view('tenant.payroll.payslip', compact('payslip'));
+        $schoolSettings = DB::table('settings')->pluck('value', 'key');
+        $schoolLogoUrl = $schoolSettings->get('logo_path')
+            ? Storage::disk('public')->url($schoolSettings->get('logo_path'))
+            : null;
+
+        return view('tenant.payroll.payslip', compact('payslip', 'schoolSettings', 'schoolLogoUrl'));
     }
 
     private function safeCsvValue(mixed $value): mixed
