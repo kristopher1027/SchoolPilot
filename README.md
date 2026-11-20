@@ -9,6 +9,7 @@ Built with **Laravel 11** and **Stancl/Tenancy**, SchoolPilot allows a single pl
 
 ## 🚀 Core Features
 
+
 ### 1. Multi-Tenant Architecture
 - **Isolated Databases:** Every school gets its own dedicated SQLite/MySQL database. Data from "Greenfield Academy" can never be seen by "Sunrise School".
 - **Automated Provisioning:** A single Artisan command (`php artisan school:create`) automatically spins up a new school, creates its database, runs all migrations, seeds default data, and creates the first admin account.
