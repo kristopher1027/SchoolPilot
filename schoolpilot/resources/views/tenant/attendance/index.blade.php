@@ -42,7 +42,7 @@
     <div class="rounded-lg bg-white p-6 text-gray-600 shadow">No classes are available for your account. Ask the school administrator to assign a class.</div>
 @elseif($selectedClass)
     <div class="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        @foreach(['present' => 'Present', 'absent' => 'Absent', 'late' => 'Late', 'excused' => 'Excused'] as $key => $label)
+        @foreach(['present' => 'Present', 'absent' => 'Absent', 'late' => 'Late', 'excused' => 'Excused', 'unmarked' => 'Unmarked'] as $key => $label)
             <div class="rounded-lg bg-white p-4 shadow">
                 <p class="text-sm text-gray-500">{{ $label }}</p>
                 <p class="text-2xl font-bold text-gray-800">{{ $summary[$key] }}</p>
@@ -83,8 +83,9 @@
                                 <td class="whitespace-nowrap px-4 py-3 text-sm text-gray-600">{{ $student->admission_no }}</td>
                                 <td class="px-4 py-3">
                                     <select name="statuses[{{ $student->id }}]" required class="w-full min-w-32 rounded border-gray-300 text-sm">
+                                        <option value="">Select status</option>
                                         @foreach(['present' => 'Present', 'absent' => 'Absent', 'late' => 'Late', 'excused' => 'Excused'] as $value => $label)
-                                            <option value="{{ $value }}" @selected(old('statuses.' . $student->id, $record?->status ?? 'present') === $value)>{{ $label }}</option>
+                                            <option value="{{ $value }}" @selected(old('statuses.' . $student->id, $record?->status) === $value)>{{ $label }}</option>
                                         @endforeach
                                     </select>
                                 </td>
