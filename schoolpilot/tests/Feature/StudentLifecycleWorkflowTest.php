@@ -120,6 +120,30 @@ class StudentLifecycleWorkflowTest extends TestCase
             $table->timestamps();
             $table->unique(['student_id', 'parent_id']);
         });
+        Schema::connection('tenant_sqlite')->create('staff', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('staff_no')->unique();
+            $table->timestamps();
+        });
+        Schema::connection('tenant_sqlite')->create('class_teachers', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('staff_id');
+            $table->unsignedBigInteger('class_id');
+            $table->unsignedBigInteger('academic_session_id')->nullable();
+            $table->timestamps();
+        });
+        Schema::connection('tenant_sqlite')->create('attendance_records', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('student_id');
+            $table->unsignedBigInteger('class_id');
+            $table->date('date');
+            $table->string('status');
+            $table->unsignedBigInteger('recorded_by')->nullable();
+            $table->text('notes')->nullable();
+            $table->timestamps();
+            $table->unique(['student_id', 'date']);
+        });
         Schema::connection('tenant_sqlite')->create('student_enrollment_history', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('student_id');
