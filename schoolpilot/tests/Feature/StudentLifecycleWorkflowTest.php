@@ -120,6 +120,30 @@ class StudentLifecycleWorkflowTest extends TestCase
             $table->timestamps();
             $table->unique(['student_id', 'parent_id']);
         });
+        Schema::connection('tenant_sqlite')->create('staff', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('staff_no')->unique();
+            $table->timestamps();
+        });
+        Schema::connection('tenant_sqlite')->create('class_teachers', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('staff_id');
+            $table->unsignedBigInteger('class_id');
+            $table->unsignedBigInteger('academic_session_id')->nullable();
+            $table->timestamps();
+        });
+        Schema::connection('tenant_sqlite')->create('attendance_records', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('student_id');
+            $table->unsignedBigInteger('class_id');
+            $table->date('date');
+            $table->string('status');
+            $table->unsignedBigInteger('recorded_by')->nullable();
+            $table->text('notes')->nullable();
+            $table->timestamps();
+            $table->unique(['student_id', 'date']);
+        });
         Schema::connection('tenant_sqlite')->create('student_enrollment_history', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('student_id');
@@ -433,4 +457,81 @@ class StudentLifecycleWorkflowTest extends TestCase
         $this->assertDatabaseHas('students', ['id' => $studentId, 'class_id' => $firstClass], 'tenant_sqlite');
         $this->assertDatabaseCount('student_enrollment_history', 0, 'tenant_sqlite');
     }
+
+    public function test_attendance_register_requires_explicit_status_and_tracks_unmarked_students(): void
+    {
+        $sectionId = DB::table('sections')->insertGetId([
+            'name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $classId = DB::table('classes')->insertGetId([
+            'section_id' => $sectionId, 'name' => 'Primary 1', 'level' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $studentId = $this->createStudent($sectionId, $classId);
+        $date = today()->toDateString();
+
+        $this->get('/school/student-lifecycle-test/attendance?class_id=' . $classId . '&date=' . $date)
+            ->assertOk()
+            ->assertSee('Unmarked')
+            ->assertSee('Select status');
+
+        $this->post('/school/student-lifecycle-test/attendance', [
+            'class_id' => $classId,
+            'date' => $date,
+            'statuses' => [$studentId => 'present'],
+        ])->assertRedirect('/school/student-lifecycle-test/attendance?class_id=' . $classId . '&date=' . $date)
+          ->assertSessionHas('success', 'Attendance saved successfully.');
+
+        $this->assertDatabaseHas('attendance_records', [
+            'student_id' => $studentId,
+            'class_id' => $classId,
+            'date' => $date . ' 00:00:00',
+            'status' => 'present',
+        ], 'tenant_sqlite');
+
+        $this->get('/school/student-lifecycle-test/attendance?class_id=' . $classId . '&date=' . $date)
+            ->assertOk()
+            ->assertSee('Present')
+            ->assertSee('Unmarked');
+    }
+
+
+
+    public function test_attendance_submission_rejects_a_partial_class_register(): void
+    {
+        $sectionId = DB::table('sections')->insertGetId([
+            'name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $classId = DB::table('classes')->insertGetId([
+            'section_id' => $sectionId, 'name' => 'Primary 1', 'level' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $firstStudentId = $this->createStudent($sectionId, $classId);
+        $secondStudentId = DB::table('students')->insertGetId([
+            'admission_no' => 'STU-002',
+            'first_name' => 'Bola',
+            'last_name' => 'Okafor',
+            'gender' => 'female',
+            'date_of_birth' => '2012-05-10',
+            'section_id' => $sectionId,
+            'class_id' => $classId,
+            'date_admitted' => '2024-09-01',
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->from('/school/student-lifecycle-test/attendance?class_id=' . $classId)
+            ->post('/school/student-lifecycle-test/attendance', [
+                'class_id' => $classId,
+                'date' => today()->toDateString(),
+                'statuses' => [$firstStudentId => 'present'],
+            ])
+            ->assertRedirect('/school/student-lifecycle-test/attendance?class_id=' . $classId)
+            ->assertSessionHasErrors(['statuses']);
+
+        $this->assertDatabaseCount('attendance_records', 0, 'tenant_sqlite');
+    }
+
+
 }

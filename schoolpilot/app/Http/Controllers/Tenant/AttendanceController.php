@@ -56,6 +56,7 @@ class AttendanceController extends Controller
 
             $records = AttendanceRecord::where('class_id', $selectedClass->id)
                 ->whereDate('date', $date)
+                ->whereIn('student_id', $students->pluck('id'))
                 ->get()
                 ->keyBy('student_id');
         }
@@ -65,6 +66,7 @@ class AttendanceController extends Controller
             'absent' => $records->where('status', 'absent')->count(),
             'late' => $records->where('status', 'late')->count(),
             'excused' => $records->where('status', 'excused')->count(),
+            'unmarked' => max(0, $students->count() - $records->count()),
         ];
 
         return view('tenant.attendance.index', compact(
