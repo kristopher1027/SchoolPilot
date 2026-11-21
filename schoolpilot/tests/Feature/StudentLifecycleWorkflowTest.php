@@ -457,4 +457,43 @@ class StudentLifecycleWorkflowTest extends TestCase
         $this->assertDatabaseHas('students', ['id' => $studentId, 'class_id' => $firstClass], 'tenant_sqlite');
         $this->assertDatabaseCount('student_enrollment_history', 0, 'tenant_sqlite');
     }
+
+    public function test_attendance_register_requires_explicit_status_and_tracks_unmarked_students(): void
+    {
+        $sectionId = DB::table('sections')->insertGetId([
+            'name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $classId = DB::table('classes')->insertGetId([
+            'section_id' => $sectionId, 'name' => 'Primary 1', 'level' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $studentId = $this->createStudent($sectionId, $classId);
+        $date = today()->toDateString();
+
+        $this->get('/school/student-lifecycle-test/attendance?class_id=' . $classId . '&date=' . $date)
+            ->assertOk()
+            ->assertSee('Unmarked')
+            ->assertSee('Select status');
+
+        $this->post('/school/student-lifecycle-test/attendance', [
+            'class_id' => $classId,
+            'date' => $date,
+            'statuses' => [$studentId => 'present'],
+        ])->assertRedirect('/school/student-lifecycle-test/attendance?class_id=' . $classId . '&date=' . $date)
+          ->assertSessionHas('success', 'Attendance saved successfully.');
+
+        $this->assertDatabaseHas('attendance_records', [
+            'student_id' => $studentId,
+            'class_id' => $classId,
+            'date' => $date,
+            'status' => 'present',
+        ], 'tenant_sqlite');
+
+        $this->get('/school/student-lifecycle-test/attendance?class_id=' . $classId . '&date=' . $date)
+            ->assertOk()
+            ->assertSee('Present')
+            ->assertSee('Unmarked');
+    }
+
+
 }
