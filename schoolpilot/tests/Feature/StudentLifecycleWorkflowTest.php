@@ -485,7 +485,7 @@ class StudentLifecycleWorkflowTest extends TestCase
         $this->assertDatabaseHas('attendance_records', [
             'student_id' => $studentId,
             'class_id' => $classId,
-            'date' => $date,
+            'date' => $date . ' 00:00:00',
             'status' => 'present',
         ], 'tenant_sqlite');
 
