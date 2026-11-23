@@ -485,11 +485,8 @@ class FeeController extends Controller
             }
 
             $payment = Payment::findOrFail($record->payment_id);
-            $approvedTotal = (float) DB::table('payment_refunds')
-                ->where('payment_id', $payment->id)
-                ->where('status', 'approved')
-                ->sum('amount');
-            if (round($approvedTotal + (float) $record->amount, 2) > round((float) $payment->amount, 2)) {
+            $reserved = $this->reservedRefundTotals((int) $payment->id);
+            if (round($reserved['accepted'] + (float) $record->amount, 2) > round((float) $payment->amount, 2)) {
                 throw ValidationException::withMessages([
                     'refund' => 'The approved refund total would exceed the original payment amount.',
                 ]);
