@@ -428,15 +428,12 @@ class FeeController extends Controller
 
         $refund = DB::transaction(function () use ($data, $payment) {
             $recorded = Payment::whereKey($payment->id)->firstOrFail();
-            $approvedRefunds = (float) DB::table('payment_refunds')
-                ->where('payment_id', $recorded->id)
-                ->where('status', 'approved')
-                ->sum('amount');
-            $pendingRefunds = (float) DB::table('payment_refunds')
-                ->where('payment_id', $recorded->id)
-                ->where('status', 'pending')
-                ->sum('amount');
-            $available = $this->refundableAmount((float) $recorded->amount, $approvedRefunds, $pendingRefunds);
+            $reserved = $this->reservedRefundTotals((int) $recorded->id);
+            $available = $this->refundableAmount(
+                (float) $recorded->amount,
+                $reserved['accepted'],
+                $reserved['pending']
+            );
             $amount = round((float) $data['amount'], 2);
 
             if ($amount > $available) {
@@ -488,11 +485,8 @@ class FeeController extends Controller
             }
 
             $payment = Payment::findOrFail($record->payment_id);
-            $approvedTotal = (float) DB::table('payment_refunds')
-                ->where('payment_id', $payment->id)
-                ->where('status', 'approved')
-                ->sum('amount');
-            if (round($approvedTotal + (float) $record->amount, 2) > round((float) $payment->amount, 2)) {
+            $reserved = $this->reservedRefundTotals((int) $payment->id);
+            if (round($reserved['accepted'] + (float) $record->amount, 2) > round((float) $payment->amount, 2)) {
                 throw ValidationException::withMessages([
                     'refund' => 'The approved refund total would exceed the original payment amount.',
                 ]);
@@ -551,43 +545,45 @@ class FeeController extends Controller
 
     public function rejectRefund(Request $request, int $refund)
     {
-        $record = DB::table('payment_refunds')->where('id', $refund)->first();
-        if (! $record || $record->status !== 'pending') {
-            throw ValidationException::withMessages([
-                'refund' => 'This refund request is no longer pending.',
-            ]);
-        }
+        $payment = DB::transaction(function () use ($refund) {
+            $record = DB::table('payment_refunds')->where('id', $refund)->first();
+            if (! $record || $record->status !== 'pending') {
+                throw ValidationException::withMessages([
+                    'refund' => 'This refund request is no longer pending.',
+                ]);
+            }
 
-        $actorId = (int) Auth::guard('school')->id();
-        if (! $this->canReviewRefund((int) $record->requested_by, $actorId)) {
-            abort(403, 'The person who requested a refund cannot reject their own request.');
-        }
+            $actorId = (int) Auth::guard('school')->id();
+            if (! $this->canReviewRefund((int) $record->requested_by, $actorId)) {
+                abort(403, 'The person who requested a refund cannot reject their own request.');
+            }
 
-        $changed = DB::table('payment_refunds')
-            ->where('id', $record->id)
-            ->where('status', 'pending')
-            ->update([
+            $changed = DB::table('payment_refunds')
+                ->where('id', $record->id)
+                ->where('status', 'pending')
+                ->update([
+                    'status' => 'rejected',
+                    'reviewed_by' => $actorId,
+                    'reviewed_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            if ($changed !== 1) {
+                throw ValidationException::withMessages([
+                    'refund' => 'This refund request has already been reviewed.',
+                ]);
+            }
+
+            $this->audit('payment.refund_rejected', 'payment_refund', (int) $record->id, [
+                'status' => 'pending',
+            ], [
                 'status' => 'rejected',
+                'payment_id' => $record->payment_id,
                 'reviewed_by' => $actorId,
-                'reviewed_at' => now(),
-                'updated_at' => now(),
             ]);
 
-        if ($changed !== 1) {
-            throw ValidationException::withMessages([
-                'refund' => 'This refund request has already been reviewed.',
-            ]);
-        }
-
-        $this->audit('payment.refund_rejected', 'payment_refund', (int) $record->id, [
-            'status' => 'pending',
-        ], [
-            'status' => 'rejected',
-            'payment_id' => $record->payment_id,
-            'reviewed_by' => $actorId,
-        ]);
-
-        $payment = Payment::findOrFail($record->payment_id);
+            return Payment::findOrFail($record->payment_id);
+        });
 
         return redirect($this->schoolPath($request, '/fees/invoices/' . $payment->invoice_id))
             ->with('success', 'Refund request rejected.');
@@ -653,6 +649,24 @@ class FeeController extends Controller
         $payment->load(['invoice.student', 'invoice.academicSession', 'invoice.term']);
 
         return view('tenant.fees.receipt', compact('payment'));
+    }
+
+    /**
+     * Refunds that have been approved or settled reduce the amount that can
+     * ever be refunded. Pending requests also reserve capacity until reviewed.
+     * Rejected requests do not reserve any of the original payment.
+     */
+    private function reservedRefundTotals(int $paymentId): array
+    {
+        $totals = DB::table('payment_refunds')
+            ->where('payment_id', $paymentId)
+            ->selectRaw("\n                COALESCE(SUM(CASE WHEN status IN ('approved', 'settled') THEN amount ELSE 0 END), 0) as accepted_amount,\n                COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as pending_amount\n            ")
+            ->first();
+
+        return [
+            'accepted' => round((float) ($totals->accepted_amount ?? 0), 2),
+            'pending' => round((float) ($totals->pending_amount ?? 0), 2),
+        ];
     }
 
     private function refundableAmount(float $paymentAmount, float $approvedRefunds, float $pendingRefunds): float
