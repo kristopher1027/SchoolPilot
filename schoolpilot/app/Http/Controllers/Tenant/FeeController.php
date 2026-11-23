@@ -655,6 +655,24 @@ class FeeController extends Controller
         return view('tenant.fees.receipt', compact('payment'));
     }
 
+    /**
+     * Refunds that have been approved or settled reduce the amount that can
+     * ever be refunded. Pending requests also reserve capacity until reviewed.
+     * Rejected requests do not reserve any of the original payment.
+     */
+    private function reservedRefundTotals(int $paymentId): array
+    {
+        $totals = DB::table('payment_refunds')
+            ->where('payment_id', $paymentId)
+            ->selectRaw("\n                COALESCE(SUM(CASE WHEN status IN ('approved', 'settled') THEN amount ELSE 0 END), 0) as accepted_amount,\n                COALESCE(SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END), 0) as pending_amount\n            ")
+            ->first();
+
+        return [
+            'accepted' => round((float) ($totals->accepted_amount ?? 0), 2),
+            'pending' => round((float) ($totals->pending_amount ?? 0), 2),
+        ];
+    }
+
     private function refundableAmount(float $paymentAmount, float $approvedRefunds, float $pendingRefunds): float
     {
         return max(0, round($paymentAmount - $approvedRefunds - $pendingRefunds, 2));
