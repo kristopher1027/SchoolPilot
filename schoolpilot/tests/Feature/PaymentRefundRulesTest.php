@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Tenant\FeeController;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use ReflectionMethod;
 use Tests\TestCase;
 
