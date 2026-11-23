@@ -428,15 +428,12 @@ class FeeController extends Controller
 
         $refund = DB::transaction(function () use ($data, $payment) {
             $recorded = Payment::whereKey($payment->id)->firstOrFail();
-            $approvedRefunds = (float) DB::table('payment_refunds')
-                ->where('payment_id', $recorded->id)
-                ->where('status', 'approved')
-                ->sum('amount');
-            $pendingRefunds = (float) DB::table('payment_refunds')
-                ->where('payment_id', $recorded->id)
-                ->where('status', 'pending')
-                ->sum('amount');
-            $available = $this->refundableAmount((float) $recorded->amount, $approvedRefunds, $pendingRefunds);
+            $reserved = $this->reservedRefundTotals((int) $recorded->id);
+            $available = $this->refundableAmount(
+                (float) $recorded->amount,
+                $reserved['accepted'],
+                $reserved['pending']
+            );
             $amount = round((float) $data['amount'], 2);
 
             if ($amount > $available) {
