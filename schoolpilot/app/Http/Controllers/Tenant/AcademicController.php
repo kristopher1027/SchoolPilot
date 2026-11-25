@@ -124,6 +124,17 @@ class AcademicController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'level' => ['required', 'integer', 'min:1', 'max:20'],
         ]);
+        $duplicate = SchoolClass::where('section_id', $validated['section_id'])
+            ->whereRaw('LOWER(name) = ?', [strtolower(trim($validated['name']))])
+            ->exists();
+
+        if ($duplicate) {
+            throw ValidationException::withMessages([
+                'name' => 'A class with this name already exists in the selected section.',
+            ]);
+        }
+
+        $validated['name'] = trim($validated['name']);
         SchoolClass::create($validated);
 
         return back()->with('success', 'Class created successfully.');
