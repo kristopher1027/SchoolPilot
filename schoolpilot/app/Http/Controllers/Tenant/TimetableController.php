@@ -128,6 +128,19 @@ class TimetableController extends Controller
             }
         }
 
+        $existingSameLesson = TimetableEntry::where('class_id', $data['class_id'])
+            ->where('subject_id', $data['subject_id'])
+            ->where('staff_id', $data['staff_id'])
+            ->where('academic_session_id', $data['academic_session_id'])
+            ->where('term_id', $data['term_id'])
+            ->where('day_of_week', $data['day_of_week'])
+            ->where('start_time', $data['start_time'])
+            ->where('end_time', $data['end_time'])
+            ->exists();
+        if ($existingSameLesson) {
+            throw ValidationException::withMessages(['start_time' => 'This lesson is already listed on the timetable.']);
+        }
+
         TimetableEntry::create($data);
 
         return redirect('/school/' . $request->route('school') . '/timetable')->with('success', 'Lesson added to the timetable.');
