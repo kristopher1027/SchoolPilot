@@ -23,6 +23,7 @@ class FinancialReportNetCollectionsTest extends TestCase
         Schema::create('invoices',function(Blueprint $t){$t->id();$t->unsignedBigInteger('student_id');$t->unsignedBigInteger('academic_session_id');$t->unsignedBigInteger('term_id');$t->decimal('total_amount',12,2);$t->decimal('amount_paid',12,2);$t->decimal('balance',12,2);$t->date('created_at')->nullable();});
         Schema::create('payments',function(Blueprint $t){$t->id();$t->unsignedBigInteger('invoice_id');$t->decimal('amount',12,2);$t->date('paid_at');});
         Schema::create('payment_refunds',function(Blueprint $t){$t->id();$t->unsignedBigInteger('payment_id');$t->decimal('amount',12,2);$t->string('status');});
+        Schema::create('school_expenses',function(Blueprint $t){$t->id();$t->decimal('amount',12,2);$t->string('status');$t->date('expense_date');$t->date('paid_at')->nullable();});
         DB::table('students')->insert(['id'=>1,'class_id'=>10,'status'=>'active']);
         DB::table('invoices')->insert([
             ['id'=>1,'student_id'=>1,'academic_session_id'=>3,'term_id'=>4,'total_amount'=>1000,'amount_paid'=>700,'balance'=>300,'created_at'=>'2026-11-20'],
@@ -38,6 +39,11 @@ class FinancialReportNetCollectionsTest extends TestCase
             ['payment_id'=>11,'amount'=>50,'status'=>'pending'],
             ['payment_id'=>11,'amount'=>40,'status'=>'rejected'],
             ['payment_id'=>12,'amount'=>500,'status'=>'settled'],
+        ]);
+        DB::table('school_expenses')->insert([
+            ['id'=>1,'amount'=>300,'status'=>'paid','expense_date'=>'2026-11-20','paid_at'=>'2026-11-22'],
+            ['id'=>2,'amount'=>200,'status'=>'unpaid','expense_date'=>'2026-11-21','paid_at'=>null],
+            ['id'=>3,'amount'=>100,'status'=>'paid','expense_date'=>'2026-11-22','paid_at'=>'2026-11-23'],
         ]);
     }
 
@@ -63,6 +69,15 @@ class FinancialReportNetCollectionsTest extends TestCase
         $this->assertSame(700.0,$data['finance']['collected']);
         $this->assertSame(1,$data['finance']['payments']);
         $this->assertSame(1000.0,$data['finance']['invoiced']);
+    }
+
+    public function test_cash_outflow_uses_paid_date_and_excludes_unpaid_expenses(): void
+    {
+        $data=$this->buildReport(['from'=>'2026-11-22','to'=>'2026-11-22','session_id'=>null,'term_id'=>null,'class_id'=>null]);
+        $this->assertSame(500.0,$data['finance']['expenses']);
+        $this->assertSame(300.0,$data['finance']['paid_expenses']);
+        $this->assertSame(200.0,$data['finance']['unpaid_expenses']);
+        $this->assertSame(300.0,$data['finance']['cash_outflow']);
     }
 
     public function test_report_csv_uses_explicit_net_collection_label(): void
