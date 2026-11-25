@@ -151,7 +151,13 @@ class ReportController extends Controller
             $data['finance']['invoiced'] = round((float) (clone $invoices)->sum('total_amount'), 2);
             $data['finance']['outstanding'] = round((float) (clone $invoices)->sum('balance'), 2);
             if (Schema::hasTable('payments')) {
+                $refundTotals = DB::table('payment_refunds')
+                    ->select('payment_id')
+                    ->selectRaw('SUM(amount) as refunded_amount')
+                    ->whereIn('status', ['approved', 'settled'])
+                    ->groupBy('payment_id');
                 $payments = DB::table('payments as p')->join('invoices as i', 'i.id', '=', 'p.invoice_id')
+                    ->leftJoinSub($refundTotals, 'refund_totals', fn ($join) => $join->on('refund_totals.payment_id', '=', 'p.id'))
                     ->when($filters['class_id'], function ($q) use ($filters) {
                         $q->whereIn('i.student_id', DB::table('students')->select('id')->where('class_id', $filters['class_id']));
                     })
@@ -159,7 +165,7 @@ class ReportController extends Controller
                     ->when($filters['term_id'], fn ($q) => $q->where('i.term_id', $filters['term_id']))
                     ->when($filters['from'], fn ($q) => $q->whereDate('p.paid_at', '>=', $filters['from']))
                     ->when($filters['to'], fn ($q) => $q->whereDate('p.paid_at', '<=', $filters['to']));
-                $data['finance']['collected'] = round((float) (clone $payments)->sum('p.amount'), 2);
+                $data['finance']['collected'] = round((float) (clone $payments)->sum(DB::raw('p.amount - COALESCE(refund_totals.refunded_amount, 0)')), 2);
                 $data['finance']['payments'] = (clone $payments)->count();
             } else {
                 $data['finance']['collected'] = round((float) (clone $invoices)->sum('amount_paid'), 2);
