@@ -261,6 +261,72 @@ class AcademicCalendarTest extends TestCase
         $this->assertDatabaseHas('terms', ['id' => $secondTerm->id, 'is_current' => 1], 'tenant_sqlite');
     }
 
+    public function test_duplicate_class_names_are_rejected_within_a_section_but_allowed_across_sections(): void
+    {
+        $sectionId = DB::connection('tenant_sqlite')->table('sections')->insertGetId([
+            'name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $otherSectionId = DB::connection('tenant_sqlite')->table('sections')->insertGetId([
+            'name' => 'Secondary', 'code' => 'SEC', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::connection('tenant_sqlite')->table('classes')->insert([
+            'section_id' => $sectionId, 'name' => 'Primary 1', 'level' => 1, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->from('/school/academic-test/academic')->post('/school/academic-test/academic/classes', [
+            'section_id' => $sectionId, 'name' => ' primary 1 ', 'level' => 1,
+        ])->assertRedirect('/school/academic-test/academic')
+          ->assertSessionHasErrors(['name']);
+
+        $this->loginAdmin();
+        $this->post('/school/academic-test/academic/classes', [
+            'section_id' => $otherSectionId, 'name' => 'Primary 1', 'level' => 1,
+        ])->assertRedirect('/school/academic-test/academic')
+          ->assertSessionHasNoErrors();
+
+        $this->assertSame(2, DB::connection('tenant_sqlite')->table('classes')->count());
+    }
+
+    public function test_duplicate_subject_names_are_rejected_in_the_same_section_scope(): void
+    {
+        $sectionId = DB::connection('tenant_sqlite')->table('sections')->insertGetId([
+            'name' => 'Primary', 'code' => 'PRI', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $otherSectionId = DB::connection('tenant_sqlite')->table('sections')->insertGetId([
+            'name' => 'Secondary', 'code' => 'SEC', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::connection('tenant_sqlite')->table('subjects')->insert([
+            'name' => 'Mathematics', 'section_id' => $sectionId, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->from('/school/academic-test/academic')->post('/school/academic-test/academic/subjects', [
+            'name' => ' mathematics ', 'section_id' => $sectionId,
+        ])->assertRedirect('/school/academic-test/academic')
+          ->assertSessionHasErrors(['name']);
+
+        $this->loginAdmin();
+        $this->post('/school/academic-test/academic/subjects', [
+            'name' => 'Mathematics', 'section_id' => $otherSectionId,
+        ])->assertRedirect('/school/academic-test/academic')
+          ->assertSessionHasNoErrors();
+
+        $this->assertSame(2, DB::connection('tenant_sqlite')->table('subjects')->count());
+    }
+
+    public function test_global_subjects_are_unique_when_no_section_is_selected(): void
+    {
+        DB::connection('tenant_sqlite')->table('subjects')->insert([
+            'name' => 'Physical Education', 'section_id' => null, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->from('/school/academic-test/academic')->post('/school/academic-test/academic/subjects', [
+            'name' => ' physical education ', 'section_id' => null,
+        ])->assertRedirect('/school/academic-test/academic')
+          ->assertSessionHasErrors(['name']);
+
+        $this->assertSame(1, DB::connection('tenant_sqlite')->table('subjects')->count());
+    }
+
     public function test_term_cannot_be_made_current_when_its_session_is_not_current(): void
     {
         $session = AcademicSession::create([
