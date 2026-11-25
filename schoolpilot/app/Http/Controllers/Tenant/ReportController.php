@@ -159,7 +159,17 @@ class ReportController extends Controller
                     ->when($filters['term_id'], fn ($q) => $q->where('i.term_id', $filters['term_id']))
                     ->when($filters['from'], fn ($q) => $q->whereDate('p.paid_at', '>=', $filters['from']))
                     ->when($filters['to'], fn ($q) => $q->whereDate('p.paid_at', '<=', $filters['to']));
-                $data['finance']['collected'] = round((float) (clone $payments)->sum('p.amount'), 2);
+                if (Schema::hasTable('payment_refunds')) {
+                    $refundTotals = DB::table('payment_refunds')
+                        ->select('payment_id')
+                        ->selectRaw('SUM(amount) as refunded_amount')
+                        ->whereIn('status', ['approved', 'settled'])
+                        ->groupBy('payment_id');
+                    $payments->leftJoinSub($refundTotals, 'refund_totals', fn ($join) => $join->on('refund_totals.payment_id', '=', 'p.id'));
+                    $data['finance']['collected'] = round((float) (clone $payments)->sum(DB::raw('p.amount - COALESCE(refund_totals.refunded_amount, 0)')), 2);
+                } else {
+                    $data['finance']['collected'] = round((float) (clone $payments)->sum('p.amount'), 2);
+                }
                 $data['finance']['payments'] = (clone $payments)->count();
             } else {
                 $data['finance']['collected'] = round((float) (clone $invoices)->sum('amount_paid'), 2);
@@ -251,7 +261,8 @@ class ReportController extends Controller
                         }
                     }
                 } else {
-                    $rows[] = [$area, $metric, $value];
+                    $label = $area === 'finance' && $metric === 'collected' ? 'net_collected_after_refunds' : $metric;
+                    $rows[] = [$area, $label, $value];
                 }
             }
         }
