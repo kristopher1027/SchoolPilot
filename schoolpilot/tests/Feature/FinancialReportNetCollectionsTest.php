@@ -18,6 +18,8 @@ class FinancialReportNetCollectionsTest extends TestCase
         DB::purge('tenant_sqlite');
         DB::setDefaultConnection('tenant_sqlite');
         Schema::create('students',function(Blueprint $t){$t->id();$t->unsignedBigInteger('class_id')->nullable();$t->string('status')->default('active');});
+        Schema::create('classes',function(Blueprint $t){$t->id();$t->string('name');});
+        DB::table('classes')->insert(['id'=>10,'name'=>'Primary 1']);
         Schema::create('invoices',function(Blueprint $t){$t->id();$t->unsignedBigInteger('student_id');$t->unsignedBigInteger('academic_session_id');$t->unsignedBigInteger('term_id');$t->decimal('total_amount',12,2);$t->decimal('amount_paid',12,2);$t->decimal('balance',12,2);$t->date('created_at')->nullable();});
         Schema::create('payments',function(Blueprint $t){$t->id();$t->unsignedBigInteger('invoice_id');$t->decimal('amount',12,2);$t->date('paid_at');});
         Schema::create('payment_refunds',function(Blueprint $t){$t->id();$t->unsignedBigInteger('payment_id');$t->decimal('amount',12,2);$t->string('status');});
