@@ -27,7 +27,10 @@ class AssignmentController extends Controller
         $terms = Term::all();
 
         // Load existing assignments
-        $assignments = TeacherSubject::with(['subject', 'schoolClass'])->get();
+        $assignments = TeacherSubject::with(['subject', 'schoolClass', 'staff.user', 'academicSession', 'term'])
+            ->orderByDesc('academic_session_id')
+            ->orderBy('class_id')
+            ->get();
 
         return view('tenant.assignments.index', compact('teachers', 'classes', 'subjects', 'sessions', 'terms', 'assignments'));
     }
