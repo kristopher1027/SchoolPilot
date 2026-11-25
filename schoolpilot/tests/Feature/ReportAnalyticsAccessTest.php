@@ -82,7 +82,7 @@ class ReportAnalyticsAccessTest extends TestCase
             ],
         ]);
 
-        $this->assertContains(['finance', 'collected', 2500], $rows);
+        $this->assertContains(['finance', 'net_collected_after_refunds', 2500], $rows);
         $this->assertContains(['enrollment', 'by_class - class_name', 'Primary 1'], $rows);
         $this->assertContains(['enrollment', 'by_class - student_count', 12], $rows);
     }
