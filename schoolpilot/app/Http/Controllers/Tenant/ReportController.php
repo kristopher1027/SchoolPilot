@@ -261,7 +261,8 @@ class ReportController extends Controller
                         }
                     }
                 } else {
-                    $rows[] = [$area, $metric, $value];
+                    $label = $area === 'finance' && $metric === 'collected' ? 'net_collected_after_refunds' : $metric;
+                    $rows[] = [$area, $label, $value];
                 }
             }
         }
