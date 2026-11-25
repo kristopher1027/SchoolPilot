@@ -279,6 +279,24 @@ class FeeController extends Controller
         return view('tenant.fees.create-invoice', compact('students', 'sessions', 'terms', 'feeItems'));
     }
 
+    /**
+     * Fee items already invoiced to a student for the same session and term
+     * must not be issued again on another invoice.
+     */
+    private function previouslyInvoicedFeeItemIds(int $studentId, int $sessionId, int $termId, array $feeItemIds): array
+    {
+        return DB::table('invoice_items as ii')
+            ->join('invoices as i', 'i.id', '=', 'ii.invoice_id')
+            ->where('i.student_id', $studentId)
+            ->where('i.academic_session_id', $sessionId)
+            ->where('i.term_id', $termId)
+            ->whereIn('ii.fee_item_id', $feeItemIds)
+            ->distinct()
+            ->pluck('ii.fee_item_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
     public function storeInvoice(Request $request)
     {
         $data = $request->validate([
@@ -305,6 +323,18 @@ class FeeController extends Controller
             throw ValidationException::withMessages(['fee_item_ids' => 'One or more fee items do not belong to the selected session and term.']);
         }
 
+        $alreadyInvoiced = $this->previouslyInvoicedFeeItemIds(
+            (int) $student->id,
+            (int) $data['academic_session_id'],
+            (int) $data['term_id'],
+            $items->pluck('id')->all()
+        );
+        if ($alreadyInvoiced !== []) {
+            throw ValidationException::withMessages([
+                'fee_item_ids' => 'These fee items have already been invoiced to this student for the selected term: ' . implode(', ', $alreadyInvoiced),
+            ]);
+        }
+
         foreach ($items as $item) {
             if ($item->class_id && (int) $item->class_id !== (int) $student->class_id) {
                 throw ValidationException::withMessages(['fee_item_ids' => 'A selected fee item does not apply to this student’s class.']);
@@ -315,6 +345,18 @@ class FeeController extends Controller
         }
 
         $invoice = DB::transaction(function () use ($data, $student, $items) {
+            // Recheck inside the transaction to catch a concurrent invoice attempt.
+            $duplicateIds = $this->previouslyInvoicedFeeItemIds(
+                (int) $student->id,
+                (int) $data['academic_session_id'],
+                (int) $data['term_id'],
+                $items->pluck('id')->all()
+            );
+            if ($duplicateIds !== []) {
+                throw ValidationException::withMessages([
+                    'fee_item_ids' => 'One or more selected fee items were invoiced while this request was being processed. Refresh and review the student’s invoices.',
+                ]);
+            }
             $total = round((float) $items->sum('amount'), 2);
             $invoice = Invoice::create([
                 'student_id' => $student->id,
