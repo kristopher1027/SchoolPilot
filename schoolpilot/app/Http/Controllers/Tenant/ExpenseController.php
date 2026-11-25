@@ -44,7 +44,7 @@ class ExpenseController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'category_id' => ['required', 'integer', 'exists:expense_categories,id'],
+            'category_id' => ['required', 'integer', Rule::exists('expense_categories', 'id')->where(fn ($query) => $query->where('is_active', true))],
             'description' => ['required', 'string', 'max:180'],
             'vendor' => ['nullable', 'string', 'max:160'],
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999.99'],
