@@ -313,6 +313,20 @@ class AcademicCalendarTest extends TestCase
         $this->assertSame(2, DB::connection('tenant_sqlite')->table('subjects')->count());
     }
 
+    public function test_global_subjects_are_unique_when_no_section_is_selected(): void
+    {
+        DB::connection('tenant_sqlite')->table('subjects')->insert([
+            'name' => 'Physical Education', 'section_id' => null, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->from('/school/academic-test/academic')->post('/school/academic-test/academic/subjects', [
+            'name' => ' physical education ', 'section_id' => null,
+        ])->assertRedirect('/school/academic-test/academic')
+          ->assertSessionHasErrors(['name']);
+
+        $this->assertSame(1, DB::connection('tenant_sqlite')->table('subjects')->count());
+    }
+
     public function test_term_cannot_be_made_current_when_its_session_is_not_current(): void
     {
         $session = AcademicSession::create([
