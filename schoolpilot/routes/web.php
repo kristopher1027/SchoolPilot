@@ -14,6 +14,7 @@ use App\Http\Controllers\Tenant\AttendanceController;
 use App\Http\Controllers\Tenant\TimetableController;
 use App\Http\Controllers\Tenant\AnnouncementController;
 use App\Http\Controllers\Tenant\FeeController;
+use App\Http\Controllers\Tenant\ExpenseController;
 use App\Http\Controllers\Tenant\AdmissionController;
 use App\Http\Controllers\Tenant\LibraryController;
 use App\Http\Controllers\Tenant\InventoryController;
@@ -348,6 +349,10 @@ Route::prefix('school/{school}')->group(function () {
             });
 
             Route::middleware(RoleMiddleware::class . ':school_admin,principal,bursar')->group(function () {
+                Route::get('/expenses', [ExpenseController::class, 'index']);
+                Route::post('/expenses', [ExpenseController::class, 'store']);
+                Route::post('/expenses/{expense}/mark-paid', [ExpenseController::class, 'markPaid'])->whereNumber('expense');
+                Route::get('/expenses/export', [ExpenseController::class, 'export']);
                 Route::get('/fees', [FeeController::class, 'index']);
                 Route::get('/fees/overdue', [FeeController::class, 'overdueInvoices']);
                 Route::get('/fees/aging', [FeeController::class, 'invoiceAging']);
