@@ -142,4 +142,36 @@
         </section>
     </div>
 </div>
+
+<section class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Classes in this school</h2>
+        @forelse($classes->sortBy('section.name') as $class)
+            <div class="flex items-center justify-between border-b border-gray-100 py-3 last:border-0">
+                <div>
+                    <p class="font-medium text-gray-800">{{ $class->name }}</p>
+                    <p class="text-sm text-gray-500">{{ $class->section?->name ?? 'Section not assigned' }} · Level {{ $class->level }}</p>
+                </div>
+            </div>
+        @empty
+            <p class="text-sm text-gray-500">No classes have been created yet.</p>
+        @endforelse
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-lg font-bold text-gray-800 mb-4">Subjects in this school</h2>
+        @forelse($subjects->sortBy('name') as $subject)
+            <div class="flex items-center justify-between border-b border-gray-100 py-3 last:border-0">
+                <div>
+                    <p class="font-medium text-gray-800">{{ $subject->name }}</p>
+                    <p class="text-sm text-gray-500">{{ $subject->section?->name ?? 'Available to all sections' }}</p>
+                </div>
+                @if($subject->code)
+                    <span class="text-xs text-gray-500">{{ $subject->code }}</span>
+                @endif
+            </div>
+        @empty
+            <p class="text-sm text-gray-500">No subjects have been created yet.</p>
+        @endforelse
+    </div>
+</section>
 @endsection
