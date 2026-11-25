@@ -65,6 +65,14 @@ class FinancialReportNetCollectionsTest extends TestCase
         $this->assertSame(1000.0,$data['finance']['invoiced']);
     }
 
+    public function test_report_csv_uses_explicit_net_collection_label(): void
+    {
+        $controller=new ReportController();
+        $method=new ReflectionMethod($controller,'exportRows');
+        $rows=$method->invoke($controller,['finance'=>['collected'=>700.0]]);
+        $this->assertContains(['finance','net_collected_after_refunds',700.0],$rows);
+    }
+
     private function buildReport(array $filters): array
     {
         $controller=new ReportController();
