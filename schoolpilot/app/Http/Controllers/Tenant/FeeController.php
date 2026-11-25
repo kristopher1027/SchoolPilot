@@ -279,6 +279,24 @@ class FeeController extends Controller
         return view('tenant.fees.create-invoice', compact('students', 'sessions', 'terms', 'feeItems'));
     }
 
+    /**
+     * Fee items already invoiced to a student for the same session and term
+     * must not be issued again on another invoice.
+     */
+    private function previouslyInvoicedFeeItemIds(int $studentId, int $sessionId, int $termId, array $feeItemIds): array
+    {
+        return DB::table('invoice_items as ii')
+            ->join('invoices as i', 'i.id', '=', 'ii.invoice_id')
+            ->where('i.student_id', $studentId)
+            ->where('i.academic_session_id', $sessionId)
+            ->where('i.term_id', $termId)
+            ->whereIn('ii.fee_item_id', $feeItemIds)
+            ->distinct()
+            ->pluck('ii.fee_item_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
     public function storeInvoice(Request $request)
     {
         $data = $request->validate([
