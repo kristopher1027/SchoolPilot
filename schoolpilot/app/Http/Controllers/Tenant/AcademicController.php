@@ -146,6 +146,21 @@ class AcademicController extends Controller
             'name' => ['required', 'string', 'max:100'],
             'section_id' => ['nullable', 'integer', 'exists:sections,id'],
         ]);
+        $name = trim($validated['name']);
+        $duplicates = Subject::whereRaw('LOWER(name) = ?', [strtolower($name)]);
+        if ($validated['section_id'] === null) {
+            $duplicates->whereNull('section_id');
+        } else {
+            $duplicates->where('section_id', $validated['section_id']);
+        }
+
+        if ($duplicates->exists()) {
+            throw ValidationException::withMessages([
+                'name' => 'A subject with this name already exists in the selected section scope.',
+            ]);
+        }
+
+        $validated['name'] = $name;
         Subject::create($validated);
 
         return back()->with('success', 'Subject created successfully.');
