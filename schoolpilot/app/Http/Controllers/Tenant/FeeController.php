@@ -323,6 +323,18 @@ class FeeController extends Controller
             throw ValidationException::withMessages(['fee_item_ids' => 'One or more fee items do not belong to the selected session and term.']);
         }
 
+        $alreadyInvoiced = $this->previouslyInvoicedFeeItemIds(
+            (int) $student->id,
+            (int) $data['academic_session_id'],
+            (int) $data['term_id'],
+            $items->pluck('id')->all()
+        );
+        if ($alreadyInvoiced !== []) {
+            throw ValidationException::withMessages([
+                'fee_item_ids' => 'These fee items have already been invoiced to this student for the selected term: ' . implode(', ', $alreadyInvoiced),
+            ]);
+        }
+
         foreach ($items as $item) {
             if ($item->class_id && (int) $item->class_id !== (int) $student->class_id) {
                 throw ValidationException::withMessages(['fee_item_ids' => 'A selected fee item does not apply to this student’s class.']);
