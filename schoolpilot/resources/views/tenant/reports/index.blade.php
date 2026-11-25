@@ -62,6 +62,9 @@
             @foreach([['Invoiced','₦'.number_format($data['finance']['invoiced'],2)],['Collected','₦'.number_format($data['finance']['collected'],2)],['Outstanding','₦'.number_format($data['finance']['outstanding'],2)],['Payments recorded',number_format($data['finance']['payments'])]] as [$label,$value])
                 <div class="rounded-xl bg-white p-4 shadow"><p class="text-sm text-gray-500">{{ $label }}</p><p class="mt-2 text-xl font-bold text-gray-900">{{ $value }}</p></div>
             @endforeach
+            @foreach([['Total expenses','₦'.number_format($data['finance']['expenses'],2)],['Paid expenses','₦'.number_format($data['finance']['paid_expenses'],2)],['Unpaid expenses','₦'.number_format($data['finance']['unpaid_expenses'],2)]] as [$label,$value])
+                <div class="rounded-xl bg-white p-4 shadow"><p class="text-sm text-gray-500">{{ $label }}</p><p class="mt-2 text-xl font-bold text-gray-900">{{ $value }}</p></div>
+            @endforeach
         </div>
     </section>
 
