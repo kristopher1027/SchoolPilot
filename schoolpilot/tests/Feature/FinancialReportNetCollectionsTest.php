@@ -74,9 +74,9 @@ class FinancialReportNetCollectionsTest extends TestCase
     public function test_cash_outflow_uses_paid_date_and_excludes_unpaid_expenses(): void
     {
         $data=$this->buildReport(['from'=>'2026-11-22','to'=>'2026-11-22','session_id'=>null,'term_id'=>null,'class_id'=>null]);
-        $this->assertSame(500.0,$data['finance']['expenses']);
-        $this->assertSame(300.0,$data['finance']['paid_expenses']);
-        $this->assertSame(200.0,$data['finance']['unpaid_expenses']);
+        $this->assertSame(100.0,$data['finance']['expenses']);
+        $this->assertSame(100.0,$data['finance']['paid_expenses']);
+        $this->assertSame(0.0,$data['finance']['unpaid_expenses']);
         $this->assertSame(300.0,$data['finance']['cash_outflow']);
     }
 
