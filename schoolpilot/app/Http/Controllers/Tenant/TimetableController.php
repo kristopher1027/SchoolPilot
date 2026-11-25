@@ -70,6 +70,9 @@ class TimetableController extends Controller
         ]);
 
         $term = Term::findOrFail($data['term_id']);
+        if ($term->start_date && $term->end_date && $term->start_date->format('Y-m-d') > $term->end_date->format('Y-m-d')) {
+            throw ValidationException::withMessages(['term_id' => 'The selected term has invalid date boundaries.']);
+        }
         if ((int) $term->academic_session_id !== (int) $data['academic_session_id']) {
             throw ValidationException::withMessages(['term_id' => 'The selected term does not belong to the selected academic session.']);
         }
@@ -78,6 +81,16 @@ class TimetableController extends Controller
         $subject = Subject::findOrFail($data['subject_id']);
         if ($subject->section_id && (int) $subject->section_id !== (int) $class->section_id) {
             throw ValidationException::withMessages(['subject_id' => 'The subject does not belong to the selected class section.']);
+        }
+
+        $session = AcademicSession::findOrFail($data['academic_session_id']);
+        if ($term->start_date->format('Y-m-d') < $session->start_date->format('Y-m-d') || $term->end_date->format('Y-m-d') > $session->end_date->format('Y-m-d')) {
+            throw ValidationException::withMessages(['term_id' => 'The selected term dates fall outside the academic session.']);
+        }
+
+        $teacher = Staff::with('user')->findOrFail($data['staff_id']);
+        if (! $teacher->user || ! $teacher->user->is_active) {
+            throw ValidationException::withMessages(['staff_id' => 'Only active staff can be scheduled.']);
         }
 
         $assignment = DB::table('teacher_subjects')
@@ -113,6 +126,19 @@ class TimetableController extends Controller
             if ($roomBusy) {
                 throw ValidationException::withMessages(['room' => 'This room is already booked during that time.']);
             }
+        }
+
+        $existingSameLesson = TimetableEntry::where('class_id', $data['class_id'])
+            ->where('subject_id', $data['subject_id'])
+            ->where('staff_id', $data['staff_id'])
+            ->where('academic_session_id', $data['academic_session_id'])
+            ->where('term_id', $data['term_id'])
+            ->where('day_of_week', $data['day_of_week'])
+            ->where('start_time', $data['start_time'])
+            ->where('end_time', $data['end_time'])
+            ->exists();
+        if ($existingSameLesson) {
+            throw ValidationException::withMessages(['start_time' => 'This lesson is already listed on the timetable.']);
         }
 
         TimetableEntry::create($data);

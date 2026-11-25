@@ -80,6 +80,7 @@
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Teacher</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Subject</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Session / Term</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -88,10 +89,11 @@
                                 <td class="px-4 py-2 text-sm text-gray-900">{{ $assign->staff->user->name ?? 'Unknown' }}</td>
                                 <td class="px-4 py-2 text-sm text-gray-600">{{ $assign->schoolClass->name }}</td>
                                 <td class="px-4 py-2 text-sm text-gray-600">{{ $assign->subject->name }}</td>
+                                <td class="px-4 py-2 text-sm text-gray-600">{{ $assign->academicSession?->name ?? '—' }} / {{ $assign->term?->name ?? '—' }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="px-4 py-4 text-center text-gray-500">No assignments yet.</td>
+                                <td colspan="4" class="px-4 py-4 text-center text-gray-500">No assignments yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
