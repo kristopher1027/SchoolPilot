@@ -59,7 +59,7 @@ class PaymentReferenceSchemaTest extends TestCase
         DB::table('payments')->insert(['reference' => null, 'receipt_no' => 'SP-20261126-ABC12345']);
         DB::table('payments')->insert(['reference' => null, 'receipt_no' => null]);
 
-        $this->expectException(\\Illuminate\\Database\\QueryException::class);
+        $this->expectException(\Illuminate\Database\QueryException::class);
         DB::table('payments')->insert(['reference' => null, 'receipt_no' => 'SP-20261126-ABC12345']);
     }
 
