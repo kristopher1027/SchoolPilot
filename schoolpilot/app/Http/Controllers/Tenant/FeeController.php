@@ -43,7 +43,7 @@ class FeeController extends Controller
         $paymentsQuery = $this->reconciliationQuery($filters);
         $summary = [
             'count' => (clone $paymentsQuery)->count(),
-            'collected' => round((float) (clone $paymentsQuery)->sum(DB::raw('p.amount - COALESCE(refund_totals.refunded_amount, 0)')), 2),
+            'collected' => round((float) (clone $paymentsQuery)->sum(DB::raw('MAX(0, p.amount - COALESCE(refund_totals.refunded_amount, 0))')), 2),
         ];
         $byMethod = (clone $paymentsQuery)
             ->select('p.method')
