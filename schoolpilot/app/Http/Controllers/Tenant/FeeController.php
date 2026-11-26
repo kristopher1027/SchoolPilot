@@ -144,7 +144,7 @@ class FeeController extends Controller
             return $value;
         }
 
-        return preg_match('/^[=+@\\-\\t\\r]/', $value) ? "'" . $value : $value;
+        return preg_match('/^[\\s]*[=+@\\-]/', $value) ? "'" . $value : $value;
     }
 
     public function invoiceAging()
