@@ -43,7 +43,7 @@ class FeeController extends Controller
         $paymentsQuery = $this->reconciliationQuery($filters);
         $summary = [
             'count' => (clone $paymentsQuery)->count(),
-            'collected' => round((float) (clone $paymentsQuery)->sum(DB::raw('p.amount - COALESCE(refund_totals.refunded_amount, 0)')), 2),
+            'collected' => round((float) (clone $paymentsQuery)->sum(DB::raw('MAX(0, p.amount - COALESCE(refund_totals.refunded_amount, 0))')), 2),
         ];
         $byMethod = (clone $paymentsQuery)
             ->select('p.method')
@@ -144,7 +144,7 @@ class FeeController extends Controller
             return $value;
         }
 
-        return preg_match('/^[=+@\\-\\t\\r]/', $value) ? "'" . $value : $value;
+        return preg_match('/^[\\s]*[=+@\\-]/', $value) ? "'" . $value : $value;
     }
 
     public function invoiceAging()
@@ -638,53 +638,56 @@ class FeeController extends Controller
             'settlement_reference' => ['required', 'string', 'min:3', 'max:120'],
         ]);
 
-        $record = DB::table('payment_refunds')->where('id', $refund)->first();
-        if (! $record || $record->status !== 'approved') {
-            throw ValidationException::withMessages([
-                'refund' => 'Only approved refunds that have not yet been settled can be marked as settled.',
-            ]);
-        }
+        $payment = DB::transaction(function () use ($refund, $data) {
+            $record = DB::table('payment_refunds')->where('id', $refund)->first();
+            if (! $record || $record->status !== 'approved' || $record->settled_at !== null) {
+                throw ValidationException::withMessages([
+                    'refund' => 'Only approved refunds that have not yet been settled can be marked as settled.',
+                ]);
+            }
 
-        $actorId = (int) Auth::guard('school')->id();
-        if (! $this->canSettleRefund((int) $record->requested_by, (int) $record->reviewed_by, $actorId)) {
-            abort(403, 'The requester and approver cannot record settlement. A different authorized staff member must confirm the refund transfer.');
-        }
+            $actorId = (int) Auth::guard('school')->id();
+            if (! $this->canSettleRefund((int) $record->requested_by, (int) $record->reviewed_by, $actorId)) {
+                abort(403, 'The requester and approver cannot record settlement. A different authorized staff member must confirm the refund transfer.');
+            }
 
-        $changed = DB::table('payment_refunds')
-            ->where('id', $record->id)
-            ->where('status', 'approved')
-            ->whereNull('settled_at')
-            ->update([
+            $changed = DB::table('payment_refunds')
+                ->where('id', $record->id)
+                ->where('status', 'approved')
+                ->whereNull('settled_at')
+                ->update([
+                    'status' => 'settled',
+                    'settlement_method' => $data['settlement_method'],
+                    'settlement_reference' => $data['settlement_reference'],
+                    'settled_by' => $actorId,
+                    'settled_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+            if ($changed !== 1) {
+                throw ValidationException::withMessages([
+                    'refund' => 'This refund was already settled or its status has changed.',
+                ]);
+            }
+
+            $this->audit('payment.refund_settled', 'payment_refund', (int) $record->id, [
+                'status' => 'approved',
+            ], [
                 'status' => 'settled',
+                'payment_id' => $record->payment_id,
+                'amount' => (float) $record->amount,
                 'settlement_method' => $data['settlement_method'],
                 'settlement_reference' => $data['settlement_reference'],
                 'settled_by' => $actorId,
-                'settled_at' => now(),
-                'updated_at' => now(),
             ]);
 
-        if ($changed !== 1) {
-            throw ValidationException::withMessages([
-                'refund' => 'This refund was already settled or its status has changed.',
-            ]);
-        }
-
-        $this->audit('payment.refund_settled', 'payment_refund', (int) $record->id, [
-            'status' => 'approved',
-        ], [
-            'status' => 'settled',
-            'payment_id' => $record->payment_id,
-            'amount' => (float) $record->amount,
-            'settlement_method' => $data['settlement_method'],
-            'settlement_reference' => $data['settlement_reference'],
-            'settled_by' => $actorId,
-        ]);
-
-        $payment = Payment::findOrFail($record->payment_id);
+            return Payment::findOrFail($record->payment_id);
+        });
 
         return redirect($this->schoolPath($request, '/fees/invoices/' . $payment->invoice_id))
             ->with('success', 'Refund settlement recorded successfully.');
     }
+
 
     public function receipt(Payment $payment)
     {
