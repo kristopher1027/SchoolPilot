@@ -108,6 +108,11 @@ class FeeController extends Controller
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    private function moneyAmountRules(): array
+    {
+        return ['required', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999'];
+    }
+
     private function validatedReconciliationFilters(Request $request): array
     {
         $filters = $request->validate([
@@ -234,7 +239,7 @@ class FeeController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999'],
+            'amount' => $this->moneyAmountRules(),
             'academic_session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
             'term_id' => ['required', 'integer', 'exists:terms,id'],
             'class_id' => ['nullable', 'integer', 'exists:classes,id'],
@@ -410,7 +415,7 @@ class FeeController extends Controller
     public function storePayment(Request $request, Invoice $invoice)
     {
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999'],
+            'amount' => $this->moneyAmountRules(),
             'method' => ['required', Rule::in(['cash', 'transfer'])],
             'reference' => ['nullable', 'string', 'max:120', Rule::requiredIf(fn () => $request->input('method') === 'transfer'), Rule::unique('payments', 'reference')],
         ]);
@@ -463,7 +468,7 @@ class FeeController extends Controller
     public function requestRefund(Request $request, Payment $payment)
     {
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999'],
+            'amount' => $this->moneyAmountRules(),
             'reason' => ['required', 'string', 'min:8', 'max:1000'],
             'reference' => ['nullable', 'string', 'max:120'],
         ]);
