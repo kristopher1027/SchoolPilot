@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Controllers\Tenant\FeeController;
-use Illuminate\\Support\\Facades\\Validator;
+use Illuminate\Support\Facades\Validator;
 use ReflectionMethod;
 use Tests\TestCase;
 
