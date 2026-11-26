@@ -44,7 +44,7 @@ class ExpenseController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'category_id' => ['required', 'integer', 'exists:expense_categories,id'],
+            'category_id' => ['required', 'integer', Rule::exists('expense_categories', 'id')->where(fn ($query) => $query->where('is_active', true))],
             'description' => ['required', 'string', 'max:180'],
             'vendor' => ['nullable', 'string', 'max:160'],
             'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999.99'],
@@ -85,19 +85,47 @@ class ExpenseController extends Controller
 
     public function markPaid(Request $request, SchoolExpense $expense)
     {
-        abort_unless($expense->status === 'unpaid', 404);
-        $data = $request->validate(['paid_at' => ['required', 'date'], 'payment_method' => ['required', Rule::in(['cash','transfer','card','other'])], 'reference' => ['nullable', 'string', 'max:100']]);
-        if (!empty($data['reference'])) {
-            validator($data, ['reference' => ['unique:school_expenses,reference']])->validate();
-        }
-        $old = $expense->only(['status','paid_at','payment_method','reference']);
-        $expense->update(['status'=>'paid','paid_at'=>$data['paid_at'],'payment_method'=>$data['payment_method'],'reference'=>$data['reference'] ?? $expense->reference]);
-        DB::table('audit_logs')->insert([
-            'user_id'=>Auth::guard('school')->id(),'action'=>'expense.marked_paid','entity_type'=>'school_expense','entity_id'=>$expense->id,
-            'old_value'=>json_encode($old),'new_value'=>json_encode($expense->only(['status','paid_at','payment_method','reference'])),
-            'ip_address'=>$request->ip(),'created_at'=>now(),'updated_at'=>now(),
+        $data = $request->validate([
+            'paid_at' => ['required', 'date'],
+            'payment_method' => ['required', Rule::in(['cash', 'transfer', 'card', 'other'])],
+            'reference' => ['nullable', 'string', 'max:100'],
         ]);
-        return back()->with('success','Expense marked as paid.');
+        $data['reference'] = isset($data['reference']) ? trim($data['reference']) : null;
+        if ($data['reference'] === '') {
+            $data['reference'] = null;
+        }
+
+        DB::transaction(function () use ($data, $expense, $request): void {
+            $old = SchoolExpense::whereKey($expense->id)->firstOrFail();
+            $changes = SchoolExpense::whereKey($old->id)
+                ->where('status', 'unpaid')
+                ->update([
+                    'status' => 'paid',
+                    'paid_at' => $data['paid_at'],
+                    'payment_method' => $data['payment_method'],
+                    'reference' => $data['reference'] ?? $old->reference,
+                    'updated_at' => now(),
+                ]);
+
+            if ($changes !== 1) {
+                abort(409, 'This expense has already been marked as paid. Refresh the expense list.');
+            }
+
+            $updated = SchoolExpense::findOrFail($old->id);
+            DB::table('audit_logs')->insert([
+                'user_id' => Auth::guard('school')->id(),
+                'action' => 'expense.marked_paid',
+                'entity_type' => 'school_expense',
+                'entity_id' => $updated->id,
+                'old_value' => json_encode($old->only(['status', 'paid_at', 'payment_method', 'reference'])),
+                'new_value' => json_encode($updated->only(['status', 'paid_at', 'payment_method', 'reference'])),
+                'ip_address' => $request->ip(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+
+        return back()->with('success', 'Expense marked as paid.');
     }
 
     public function export(Request $request): StreamedResponse

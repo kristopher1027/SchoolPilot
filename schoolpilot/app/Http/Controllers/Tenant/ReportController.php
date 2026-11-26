@@ -80,7 +80,7 @@ class ReportController extends Controller
             'admissions' => ['total' => 0, 'submitted' => 0, 'under_review' => 0, 'accepted' => 0, 'waitlisted' => 0, 'rejected' => 0, 'converted' => 0],
             'attendance' => ['total' => 0, 'present' => 0, 'absent' => 0, 'late' => 0, 'excused' => 0, 'rate' => 0],
             'academics' => ['score_entries' => 0, 'average_score' => 0, 'by_class' => collect()],
-            'finance' => ['invoiced' => 0, 'collected' => 0, 'outstanding' => 0, 'payments' => 0, 'expenses' => 0, 'paid_expenses' => 0, 'unpaid_expenses' => 0],
+            'finance' => ['invoiced' => 0, 'collected' => 0, 'outstanding' => 0, 'payments' => 0, 'expenses' => 0, 'paid_expenses' => 0, 'unpaid_expenses' => 0, 'cash_outflow' => 0],
             'staff' => ['total' => 0, 'active_users' => 0],
             'library' => ['books' => 0, 'copies' => 0, 'active_loans' => 0, 'overdue_loans' => 0, 'reservations' => 0],
             'inventory' => ['items' => 0, 'low_stock_items' => 0, 'total_stock_quantity' => 0, 'assets' => 0, 'maintenance_records' => 0, 'pending_purchase_requests' => 0],
@@ -184,6 +184,10 @@ class ReportController extends Controller
             $data['finance']['expenses'] = round((float) (clone $expenses)->sum('amount'), 2);
             $data['finance']['paid_expenses'] = round((float) (clone $expenses)->where('status', 'paid')->sum('amount'), 2);
             $data['finance']['unpaid_expenses'] = round((float) (clone $expenses)->where('status', 'unpaid')->sum('amount'), 2);
+            $cashOutflow = DB::table('school_expenses')->where('status', 'paid')
+                ->when($filters['from'], fn ($q) => $q->whereDate('paid_at', '>=', $filters['from']))
+                ->when($filters['to'], fn ($q) => $q->whereDate('paid_at', '<=', $filters['to']));
+            $data['finance']['cash_outflow'] = round((float) $cashOutflow->sum('amount'), 2);
         }
 
         if (Schema::hasTable('staff')) {
