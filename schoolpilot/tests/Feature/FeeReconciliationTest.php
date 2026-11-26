@@ -1,10 +1,10 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Http\\Controllers\\Tenant\\FeeController;
+use App\Http\Controllers\Tenant\FeeController;
 use ReflectionMethod;
-use Tests\\TestCase;
+use Tests\TestCase;
 
 class FeeReconciliationTest extends TestCase
 {
@@ -16,7 +16,7 @@ class FeeReconciliationTest extends TestCase
 
         $this->assertSame("'=1+1", $method->invoke($controller, '=1+1'));
         $this->assertSame("'  =1+1", $method->invoke($controller, '  =1+1'));
-        $this->assertSame("'\\t+SUM(A1:A2)", $method->invoke($controller, "\\t+SUM(A1:A2)"));
+        $this->assertSame("'\t+SUM(A1:A2)", $method->invoke($controller, "\t+SUM(A1:A2)"));
         $this->assertSame("'+SUM(A1:A2)", $method->invoke($controller, '+SUM(A1:A2)'));
         $this->assertSame('Transfer reference', $method->invoke($controller, 'Transfer reference'));
         $this->assertSame(1250.50, $method->invoke($controller, 1250.50));
