@@ -622,7 +622,7 @@ class FeeController extends Controller
     {
         $data = $request->validate([
             'settlement_method' => ['required', Rule::in(['cash', 'bank_transfer', 'other'])],
-            'settlement_reference' => ['required', 'string', 'min:3', 'max:120'],
+            'settlement_reference' => ['required', 'string', 'min:3', 'max:120', Rule::unique('payment_refunds', 'settlement_reference')],
         ]);
 
         $payment = DB::transaction(function () use ($refund, $data) {
