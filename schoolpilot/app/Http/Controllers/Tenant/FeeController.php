@@ -47,7 +47,7 @@ class FeeController extends Controller
         ];
         $byMethod = (clone $paymentsQuery)
             ->select('p.method')
-            ->selectRaw('COUNT(p.id) as payment_count, SUM(p.amount - COALESCE(refund_totals.refunded_amount, 0)) as amount_total')
+            ->selectRaw('COUNT(p.id) as payment_count, SUM(MAX(0, p.amount - COALESCE(refund_totals.refunded_amount, 0))) as amount_total')
             ->groupBy('p.method')
             ->orderBy('p.method')
             ->get();
@@ -56,7 +56,7 @@ class FeeController extends Controller
                 'p.id', 'p.amount', 'p.method', 'p.reference', 'p.receipt_no', 'p.paid_at',
                 'i.id as invoice_id', 's.admission_no', 's.first_name', 's.last_name',
             ])
-            ->selectRaw('COALESCE(refund_totals.refunded_amount, 0) as refunded_amount, p.amount - COALESCE(refund_totals.refunded_amount, 0) as net_amount')
+            ->selectRaw('COALESCE(refund_totals.refunded_amount, 0) as refunded_amount, MAX(0, p.amount - COALESCE(refund_totals.refunded_amount, 0)) as net_amount')
             ->orderByDesc('p.paid_at')
             ->orderByDesc('p.id')
             ->paginate(25)
@@ -76,7 +76,7 @@ class FeeController extends Controller
                 's.admission_no', 's.first_name', 's.last_name', 'i.id as invoice_id',
                 'a.name as session_name', 't.name as term_name',
             ])
-            ->selectRaw('COALESCE(refund_totals.refunded_amount, 0) as refunded_amount, p.amount - COALESCE(refund_totals.refunded_amount, 0) as net_amount')
+            ->selectRaw('COALESCE(refund_totals.refunded_amount, 0) as refunded_amount, MAX(0, p.amount - COALESCE(refund_totals.refunded_amount, 0)) as net_amount')
             ->orderBy('p.paid_at')
             ->orderBy('p.id')
             ->get();
@@ -106,6 +106,11 @@ class FeeController extends Controller
             }
             fclose($output);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    private function moneyAmountRules(): array
+    {
+        return ['required', 'numeric', 'decimal:0,2', 'gt:0', 'max:9999999999'];
     }
 
     private function validatedReconciliationFilters(Request $request): array
@@ -234,7 +239,7 @@ class FeeController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:160'],
-            'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999'],
+            'amount' => $this->moneyAmountRules(),
             'academic_session_id' => ['required', 'integer', 'exists:academic_sessions,id'],
             'term_id' => ['required', 'integer', 'exists:terms,id'],
             'class_id' => ['nullable', 'integer', 'exists:classes,id'],
@@ -410,7 +415,7 @@ class FeeController extends Controller
     public function storePayment(Request $request, Invoice $invoice)
     {
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999'],
+            'amount' => $this->moneyAmountRules(),
             'method' => ['required', Rule::in(['cash', 'transfer'])],
             'reference' => ['nullable', 'string', 'max:120', Rule::requiredIf(fn () => $request->input('method') === 'transfer'), Rule::unique('payments', 'reference')],
         ]);
@@ -463,7 +468,7 @@ class FeeController extends Controller
     public function requestRefund(Request $request, Payment $payment)
     {
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'gt:0', 'max:9999999999'],
+            'amount' => $this->moneyAmountRules(),
             'reason' => ['required', 'string', 'min:8', 'max:1000'],
             'reference' => ['nullable', 'string', 'max:120'],
         ]);

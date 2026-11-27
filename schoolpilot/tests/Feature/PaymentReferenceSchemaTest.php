@@ -27,6 +27,7 @@ class PaymentReferenceSchemaTest extends TestCase
         Schema::connection('tenant_sqlite')->create('payments', function (Blueprint $table) {
             $table->id();
             $table->string('reference')->nullable();
+            $table->string('receipt_no')->nullable();
         });
     }
 
@@ -48,6 +49,47 @@ class PaymentReferenceSchemaTest extends TestCase
 
         $this->expectException(\Illuminate\Database\QueryException::class);
         DB::table('payments')->insert(['reference' => 'BANK-REF-001']);
+    }
+
+    public function test_receipt_number_migration_enforces_unique_non_null_receipts(): void
+    {
+        $migration = require database_path('migrations/tenant/2026_11_26_000001_add_unique_receipt_number_to_payments_table.php');
+        $migration->up();
+
+        DB::table('payments')->insert(['reference' => null, 'receipt_no' => 'SP-20261126-ABC12345']);
+        DB::table('payments')->insert(['reference' => null, 'receipt_no' => null]);
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        DB::table('payments')->insert(['reference' => null, 'receipt_no' => 'SP-20261126-ABC12345']);
+    }
+
+    public function test_receipt_number_migration_preserves_existing_unique_constraint_and_rollback(): void
+    {
+        Schema::connection('tenant_sqlite')->table('payments', function (Blueprint $table): void {
+            $table->unique('receipt_no');
+        });
+
+        $migration = require database_path('migrations/tenant/2026_11_26_000001_add_unique_receipt_number_to_payments_table.php');
+        $migration->up();
+        $migration->down();
+
+        DB::table('payments')->insert(['reference' => null, 'receipt_no' => 'BASELINE-UNIQUE']);
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        DB::table('payments')->insert(['reference' => null, 'receipt_no' => 'BASELINE-UNIQUE']);
+    }
+
+    public function test_receipt_number_migration_refuses_existing_duplicate_receipts(): void
+    {
+        DB::table('payments')->insert([
+            ['reference' => null, 'receipt_no' => 'SP-DUPLICATE'],
+            ['reference' => null, 'receipt_no' => 'SP-DUPLICATE'],
+        ]);
+
+        $migration = require database_path('migrations/tenant/2026_11_26_000001_add_unique_receipt_number_to_payments_table.php');
+
+        $this->expectException(RuntimeException::class);
+        $migration->up();
     }
 
     public function test_payment_reference_migration_refuses_existing_duplicate_references(): void
