@@ -1,12 +1,14 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\\Database\\Migrations\\Migration;
+use Illuminate\\Database\\Schema\\Blueprint;
+use Illuminate\\Support\\Facades\\DB;
+use Illuminate\\Support\\Facades\\Schema;
 
 return new class extends Migration
 {
+    private const INDEX_NAME = 'payments_receipt_no_integrity_unique';
+
     public function up(): void
     {
         $duplicates = DB::table('payments')
@@ -24,15 +26,34 @@ return new class extends Migration
             );
         }
 
-        Schema::table('payments', function (Blueprint $table) {
-            $table->unique('receipt_no', 'payments_receipt_no_unique');
+        // The initial tenant schema already declares receipt_no as unique.
+        // Avoid creating a second unique index on databases provisioned from that schema.
+        $receiptIsAlreadyUnique = collect(Schema::getIndexes('payments'))->contains(
+            fn (array $index): bool => ($index['unique'] ?? false)
+                && ($index['columns'] ?? []) === ['receipt_no']
+        );
+
+        if ($receiptIsAlreadyUnique) {
+            return;
+        }
+
+        Schema::table('payments', function (Blueprint $table): void {
+            $table->unique('receipt_no', self::INDEX_NAME);
         });
     }
 
     public function down(): void
     {
-        Schema::table('payments', function (Blueprint $table) {
-            $table->dropUnique('payments_receipt_no_unique');
+        $indexExists = collect(Schema::getIndexes('payments'))->contains(
+            fn (array $index): bool => ($index['name'] ?? null) === self::INDEX_NAME
+        );
+
+        if (! $indexExists) {
+            return;
+        }
+
+        Schema::table('payments', function (Blueprint $table): void {
+            $table->dropUnique(self::INDEX_NAME);
         });
     }
 };
