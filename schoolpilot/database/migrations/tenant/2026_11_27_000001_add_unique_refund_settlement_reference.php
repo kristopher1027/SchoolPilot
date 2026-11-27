@@ -14,7 +14,6 @@ return new class extends Migration
         $duplicates = DB::table('payment_refunds')
             ->select('settlement_reference')
             ->whereNotNull('settlement_reference')
-            ->where('settlement_reference', '!=', '')
             ->groupBy('settlement_reference')
             ->havingRaw('COUNT(*) > 1')
             ->limit(10)
