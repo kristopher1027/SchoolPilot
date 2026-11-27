@@ -63,6 +63,22 @@ class PaymentReferenceSchemaTest extends TestCase
         DB::table('payments')->insert(['reference' => null, 'receipt_no' => 'SP-20261126-ABC12345']);
     }
 
+    public function test_receipt_number_migration_preserves_existing_unique_constraint_and_rollback(): void
+    {
+        Schema::connection('tenant_sqlite')->table('payments', function (Blueprint $table): void {
+            $table->unique('receipt_no');
+        });
+
+        $migration = require database_path('migrations/tenant/2026_11_26_000001_add_unique_receipt_number_to_payments_table.php');
+        $migration->up();
+        $migration->down();
+
+        DB::table('payments')->insert(['reference' => null, 'receipt_no' => 'BASELINE-UNIQUE']);
+
+        $this->expectException(\\Illuminate\\Database\\QueryException::class);
+        DB::table('payments')->insert(['reference' => null, 'receipt_no' => 'BASELINE-UNIQUE']);
+    }
+
     public function test_receipt_number_migration_refuses_existing_duplicate_receipts(): void
     {
         DB::table('payments')->insert([
