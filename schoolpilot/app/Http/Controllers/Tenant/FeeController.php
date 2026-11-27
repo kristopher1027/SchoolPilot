@@ -29,12 +29,64 @@ class FeeController extends Controller
         $feeItems = FeeItem::with(['academicSession', 'term', 'schoolClass', 'section'])
             ->latest()->get();
         $summary = [
-            'invoiced' => (float) Invoice::sum('total_amount'),
-            'collected' => (float) Invoice::sum('amount_paid'),
-            'outstanding' => (float) Invoice::sum('balance'),
+            'invoiced' => round((float) Invoice::sum('total_amount'), 2),
+            'collected' => round((float) Invoice::sum('amount_paid'), 2),
+            'outstanding' => round((float) Invoice::sum('balance'), 2),
+            'expenses_paid' => round((float) DB::table('school_expenses')->where('status', 'paid')->sum('amount'), 2),
+            'expenses_unpaid' => round((float) DB::table('school_expenses')->where('status', 'unpaid')->sum('amount'), 2),
+            'net_cash_position' => round(
+                (float) Invoice::sum('amount_paid')
+                - (float) DB::table('school_expenses')->where('status', 'paid')->sum('amount'),
+                2
+            ),
+            'pending_refunds' => round((float) DB::table('payment_refunds')->where('status', 'pending')->sum('amount'), 2),
+            'overdue_balance' => round((float) Invoice::whereNotNull('due_date')
+                ->whereDate('due_date', '<', today())
+                ->where('balance', '>', 0)
+                ->where('status', '!=', 'paid')
+                ->sum('balance'), 2),
         ];
 
-        return view('tenant.fees.index', compact('invoices', 'feeItems', 'summary'));
+        $monthlyCollections = DB::table('payments as p')
+            ->join('invoices as i', 'i.id', '=', 'p.invoice_id')
+            ->leftJoinSub(
+                DB::table('payment_refunds')
+                    ->select('payment_id')
+                    ->selectRaw('SUM(amount) as refunded_amount')
+                    ->whereIn('status', ['approved', 'settled'])
+                    ->groupBy('payment_id'),
+                'refund_totals',
+                fn ($join) => $join->on('refund_totals.payment_id', '=', 'p.id')
+            )
+            ->where('p.paid_at', '>=', now()->subMonths(5)->startOfMonth())
+            ->selectRaw("strftime('%Y-%m', p.paid_at) as month_key")
+            ->selectRaw('SUM(MAX(0, p.amount - COALESCE(refund_totals.refunded_amount, 0))) as collected')
+            ->groupBy('month_key')
+            ->orderBy('month_key')
+            ->get()
+            ->keyBy('month_key');
+
+        $monthlyExpenses = DB::table('school_expenses')
+            ->where('status', 'paid')
+            ->where('paid_at', '>=', now()->subMonths(5)->startOfMonth()->toDateString())
+            ->selectRaw("strftime('%Y-%m', paid_at) as month_key")
+            ->selectRaw('SUM(amount) as spent')
+            ->groupBy('month_key')
+            ->get()
+            ->keyBy('month_key');
+
+        $monthlyFinance = collect(range(5, 0))->map(function (int $monthsAgo) use ($monthlyCollections, $monthlyExpenses) {
+            $date = now()->startOfMonth()->subMonths($monthsAgo);
+            $key = $date->format('Y-m');
+
+            return [
+                'month' => $date->format('M Y'),
+                'collected' => round((float) ($monthlyCollections->get($key)->collected ?? 0), 2),
+                'spent' => round((float) ($monthlyExpenses->get($key)->spent ?? 0), 2),
+            ];
+        });
+
+        return view('tenant.fees.index', compact('invoices', 'feeItems', 'summary', 'monthlyFinance'));
     }
 
     public function reconciliation(Request $request)
