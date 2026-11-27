@@ -75,7 +75,7 @@ class PaymentReferenceSchemaTest extends TestCase
 
         DB::table('payments')->insert(['reference' => null, 'receipt_no' => 'BASELINE-UNIQUE']);
 
-        $this->expectException(\\Illuminate\\Database\\QueryException::class);
+        $this->expectException(\Illuminate\Database\QueryException::class);
         DB::table('payments')->insert(['reference' => null, 'receipt_no' => 'BASELINE-UNIQUE']);
     }
 
