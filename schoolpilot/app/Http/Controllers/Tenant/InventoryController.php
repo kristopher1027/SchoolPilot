@@ -120,9 +120,8 @@ class InventoryController extends Controller
         }
 
         DB::transaction(function () use ($data) {
-            $stock = InventoryStock::where('item_id', $data['item_id'])
-                ->where('location_id', $data['location_id'])->lockForUpdate()->first();
-            $current = (float) ($stock?->quantity ?? 0);
+            $stock = $this->lockStockRow((int) $data['item_id'], (int) $data['location_id']);
+            $current = (float) $stock->quantity;
             $quantity = (float) $data['quantity'];
             $next = match ($data['movement_type']) {
                 'receipt' => $current + $quantity,
@@ -131,9 +130,6 @@ class InventoryController extends Controller
             };
             if ($next < 0) {
                 throw ValidationException::withMessages(['quantity' => 'The issue quantity exceeds available stock at this location.']);
-            }
-            if (!$stock) {
-                $stock = InventoryStock::create(['item_id' => $data['item_id'], 'location_id' => $data['location_id'], 'quantity' => 0]);
             }
             $stock->update(['quantity' => $next]);
             InventoryMovement::create([
@@ -249,10 +245,7 @@ class InventoryController extends Controller
                 $remaining = (float) $line->quantity_ordered - (float) $line->quantity_received;
                 abort_if($qty > $remaining, 422, 'Received quantity exceeds the outstanding quantity for ' . $line->item?->name . '.');
                 $line->update(['quantity_received' => (float) $line->quantity_received + $qty]);
-                $stock = InventoryStock::firstOrCreate(
-                    ['item_id' => $line->item_id, 'location_id' => $data['location_id']],
-                    ['quantity' => 0]
-                );
+                $stock = $this->lockStockRow((int) $line->item_id, (int) $data['location_id']);
                 $stock->update(['quantity' => (float) $stock->quantity + $qty]);
                 InventoryMovement::create([
                     'item_id' => $line->item_id, 'location_id' => $data['location_id'], 'movement_type' => 'receipt',
@@ -325,6 +318,27 @@ class InventoryController extends Controller
             $this->audit('asset.maintenance_recorded', 'asset', $asset->id, null, ['status' => $data['status'], 'cost' => $data['cost'] ?? 0]);
         });
         return $this->back($request, 'Maintenance record saved.');
+    }
+
+    /**
+     * Ensure a single stock row exists before locking it for a movement.
+     * insertOrIgnore handles concurrent first movements against the
+     * inventory_stocks(item_id, location_id) unique constraint.
+     */
+    private function lockStockRow(int $itemId, int $locationId): InventoryStock
+    {
+        DB::table('inventory_stocks')->insertOrIgnore([
+            'item_id' => $itemId,
+            'location_id' => $locationId,
+            'quantity' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return InventoryStock::where('item_id', $itemId)
+            ->where('location_id', $locationId)
+            ->lockForUpdate()
+            ->firstOrFail();
     }
 
     private function number(string $prefix): string
