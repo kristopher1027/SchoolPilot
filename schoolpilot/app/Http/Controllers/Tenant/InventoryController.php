@@ -120,18 +120,18 @@ class InventoryController extends Controller
         }
 
         DB::transaction(function () use ($data) {
-            $stock = $this->lockStockRow((int) $data['item_id'], (int) $data['location_id']);
-            $current = (float) $stock->quantity;
-            $quantity = (float) $data['quantity'];
-            $next = match ($data['movement_type']) {
-                'receipt' => $current + $quantity,
-                'issue' => $current - $quantity,
-                default => $quantity,
-            };
-            if ($next < 0) {
+            $movement = $this->applyStockMovement(
+                (int) $data['item_id'],
+                (int) $data['location_id'],
+                $data['movement_type'],
+                (float) $data['quantity']
+            );
+
+            if ($movement === null) {
                 throw ValidationException::withMessages(['quantity' => 'The issue quantity exceeds available stock at this location.']);
             }
-            $stock->update(['quantity' => $next]);
+
+            [$current, $next] = $movement;
             InventoryMovement::create([
                 'item_id' => $data['item_id'], 'location_id' => $data['location_id'],
                 'movement_type' => $data['movement_type'], 'quantity' => $data['movement_type'] === 'adjustment' ? $next - $current : $quantity,
@@ -245,8 +245,11 @@ class InventoryController extends Controller
                 $remaining = (float) $line->quantity_ordered - (float) $line->quantity_received;
                 abort_if($qty > $remaining, 422, 'Received quantity exceeds the outstanding quantity for ' . $line->item?->name . '.');
                 $line->update(['quantity_received' => (float) $line->quantity_received + $qty]);
-                $stock = $this->lockStockRow((int) $line->item_id, (int) $data['location_id']);
-                $stock->update(['quantity' => (float) $stock->quantity + $qty]);
+                $this->lockStockRow((int) $line->item_id, (int) $data['location_id']);
+                DB::table('inventory_stocks')
+                    ->where('item_id', $line->item_id)
+                    ->where('location_id', $data['location_id'])
+                    ->increment('quantity', $qty, ['updated_at' => now()]);
                 InventoryMovement::create([
                     'item_id' => $line->item_id, 'location_id' => $data['location_id'], 'movement_type' => 'receipt',
                     'quantity' => $qty, 'reference' => $receipt->receipt_no, 'notes' => 'Goods received against ' . $order->order_no,
@@ -318,6 +321,41 @@ class InventoryController extends Controller
             $this->audit('asset.maintenance_recorded', 'asset', $asset->id, null, ['status' => $data['status'], 'cost' => $data['cost'] ?? 0]);
         });
         return $this->back($request, 'Maintenance record saved.');
+    }
+
+    /**
+     * Apply a stock movement using a conditional database update.
+     * An issue can only succeed when the row still has sufficient quantity.
+     *
+     * @return array{0: float, 1: float}|null
+     */
+    private function applyStockMovement(int $itemId, int $locationId, string $type, float $quantity): ?array
+    {
+        $stock = $this->lockStockRow($itemId, $locationId);
+        $current = (float) $stock->quantity;
+
+        $query = DB::table('inventory_stocks')
+            ->where('item_id', $itemId)
+            ->where('location_id', $locationId);
+
+        $updated = match ($type) {
+            'receipt' => $query->increment('quantity', $quantity, ['updated_at' => now()]),
+            'issue' => $query->where('quantity', '>=', $quantity)
+                ->decrement('quantity', $quantity, ['updated_at' => now()]),
+            'adjustment' => $query->update(['quantity' => $quantity, 'updated_at' => now()]),
+            default => 0,
+        };
+
+        if ($updated !== 1) {
+            return null;
+        }
+
+        $next = (float) DB::table('inventory_stocks')
+            ->where('item_id', $itemId)
+            ->where('location_id', $locationId)
+            ->value('quantity');
+
+        return [$current, $next];
     }
 
     /**
