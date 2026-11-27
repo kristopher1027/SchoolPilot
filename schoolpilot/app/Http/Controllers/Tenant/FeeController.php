@@ -422,19 +422,10 @@ class FeeController extends Controller
 
         $payment = DB::transaction(function () use ($data, $invoice) {
             $amount = round((float) $data['amount'], 2);
-            $sqlAmount = number_format($amount, 2, '.', '');
 
-            // Apply the balance check and update in one SQL statement. This is
-            // safe on SQLite too, where lockForUpdate() does not provide row locks.
-            $updated = Invoice::whereKey($invoice->id)
-                ->where('status', '!=', 'paid')
-                ->where('balance', '>=', $amount)
-                ->increment('amount_paid', $amount, [
-                    'balance' => DB::raw("balance - {$sqlAmount}"),
-                    'status' => DB::raw("CASE WHEN balance - {$sqlAmount} <= 0 THEN 'paid' ELSE 'partial' END"),
-                ]);
-
-            if ($updated !== 1) {
+            // The conditional SQL update keeps the invoice totals and status
+            // consistent even when two payment requests arrive together.
+            if (! $this->applyInvoicePayment((int) $invoice->id, $amount)) {
                 throw ValidationException::withMessages([
                     'amount' => 'The invoice is already paid or the payment exceeds its current outstanding balance.',
                 ]);
@@ -554,21 +545,12 @@ class FeeController extends Controller
                 ]);
             }
 
-            $invoice = Invoice::whereKey($payment->invoice_id)->firstOrFail();
-            $newPaid = round((float) $invoice->amount_paid - (float) $record->amount, 2);
-            $newBalance = round((float) $invoice->balance + (float) $record->amount, 2);
-            $newStatus = $newPaid <= 0 ? 'unpaid' : ($newBalance > 0 ? 'partial' : 'paid');
+            $refundAmount = round((float) $record->amount, 2);
 
-            $updated = DB::table('invoices')
-                ->where('id', $payment->invoice_id)
-                ->where('amount_paid', '>=', (float) $record->amount)
-                ->update([
-                    'amount_paid' => $newPaid,
-                    'balance' => $newBalance,
-                    'status' => $newStatus,
-                    'updated_at' => now(),
-                ]);
-            if ($updated !== 1) {
+            // Reverse the payment atomically. Do not calculate new totals from
+            // a previously-read invoice row: concurrent refunds could overwrite
+            // each other's balance changes.
+            if (! $this->applyInvoiceRefund((int) $payment->invoice_id, $refundAmount)) {
                 throw ValidationException::withMessages([
                     'refund' => 'The invoice payment totals have changed. Review the invoice before approving this refund.',
                 ]);
@@ -706,6 +688,43 @@ class FeeController extends Controller
      * ever be refunded. Pending requests also reserve capacity until reviewed.
      * Rejected requests do not reserve any of the original payment.
      */
+    /**
+     * Apply a payment without allowing the invoice to become overpaid.
+     * Returns false when the current outstanding balance cannot cover it.
+     */
+    private function applyInvoicePayment(int $invoiceId, float $amount): bool
+    {
+        $sqlAmount = number_format(round($amount, 2), 2, '.', '');
+
+        return DB::table('invoices')
+            ->where('id', $invoiceId)
+            ->where('status', '!=', 'paid')
+            ->where('balance', '>=', $sqlAmount)
+            ->increment('amount_paid', (float) $sqlAmount, [
+                'balance' => DB::raw("balance - {$sqlAmount}"),
+                'status' => DB::raw("CASE WHEN balance - {$sqlAmount} <= 0 THEN 'paid' ELSE 'partial' END"),
+                'updated_at' => now(),
+            ]) === 1;
+    }
+
+    /**
+     * Reverse a previously recorded payment while preserving
+     * total_amount = amount_paid + balance.
+     */
+    private function applyInvoiceRefund(int $invoiceId, float $amount): bool
+    {
+        $sqlAmount = number_format(round($amount, 2), 2, '.', '');
+
+        return DB::table('invoices')
+            ->where('id', $invoiceId)
+            ->where('amount_paid', '>=', $sqlAmount)
+            ->decrement('amount_paid', (float) $sqlAmount, [
+                'balance' => DB::raw("balance + {$sqlAmount}"),
+                'status' => DB::raw("CASE WHEN amount_paid - {$sqlAmount} <= 0 THEN 'unpaid' ELSE 'partial' END"),
+                'updated_at' => now(),
+            ]) === 1;
+    }
+
     private function reservedRefundTotals(int $paymentId): array
     {
         $totals = DB::table('payment_refunds')
