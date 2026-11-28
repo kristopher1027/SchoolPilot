@@ -245,6 +245,10 @@ class InventoryController extends Controller
             $unexpectedItemIds = array_diff($submittedItemIds, $orderItemIds);
             abort_if($unexpectedItemIds !== [], 422, 'Receipt contains items that do not belong to this purchase order.');
 
+            $hasPositiveQuantity = collect($data['items'])
+                ->contains(fn ($item) => (float) ($item['quantity_received'] ?? 0) > 0);
+            abort_unless($hasPositiveQuantity, 422, 'Enter at least one quantity received.');
+
             $receipt = GoodsReceipt::create([
                 'purchase_order_id' => $order->id, 'received_by' => Auth::guard('school')->id(),
                 'receipt_no' => $this->number('GRN'), 'received_at' => $data['received_at'], 'notes' => $data['notes'] ?? null,
