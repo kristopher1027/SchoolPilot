@@ -296,7 +296,7 @@ class InventoryController extends Controller
             'serial_no' => ['nullable', 'string', 'max:120'],
             'description' => ['nullable', 'string', 'max:3000'],
             'purchase_date' => ['nullable', 'date'],
-            'purchase_cost' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
+            'purchase_cost' => ['nullable', 'numeric', 'min:0', 'max:9999999999', 'decimal:0,2'],
             'warranty_until' => ['nullable', 'date', 'after_or_equal:purchase_date'],
             'condition' => ['required', Rule::in(['new', 'good', 'fair', 'poor', 'damaged'])],
         ]);
@@ -306,10 +306,16 @@ class InventoryController extends Controller
 
     public function updateAssetStatus(Request $request, Asset $asset)
     {
-        $data = $request->validate(['status' => ['required', Rule::in(['active', 'under_maintenance', 'disposed', 'lost'])]]);
-        $old = $asset->status;
-        $asset->update($data);
-        $this->audit('asset.status_updated', 'asset', $asset->id, ['status' => $old], ['status' => $asset->status]);
+        $data = $request->validate(['status' => ['required', Rule::in(['active', 'disposed', 'lost'])]]);
+        DB::transaction(function () use ($asset, $data) {
+            $locked = Asset::whereKey($asset->id)->lockForUpdate()->firstOrFail();
+            if ($data['status'] === 'active' && $locked->maintenance()->whereIn('status', ['scheduled', 'in_progress'])->exists()) {
+                throw ValidationException::withMessages(['status' => 'This asset has open maintenance work and cannot be marked active.']);
+            }
+            $old = $locked->status;
+            $locked->update($data);
+            $this->audit('asset.status_updated', 'asset', $locked->id, ['status' => $old], ['status' => $locked->status]);
+        });
         return $this->back($request, 'Asset status updated.');
     }
 
@@ -317,23 +323,31 @@ class InventoryController extends Controller
     {
         $data = $request->validate([
             'description' => ['required', 'string', 'max:3000'],
-            'cost' => ['nullable', 'numeric', 'min:0', 'max:9999999999'],
+            'cost' => ['nullable', 'numeric', 'min:0', 'max:9999999999', 'decimal:0,2'],
             'service_date' => ['nullable', 'date'],
             'next_service_date' => ['nullable', 'date', 'after_or_equal:service_date'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'status' => ['required', Rule::in(['scheduled', 'in_progress', 'completed', 'cancelled'])],
         ]);
         DB::transaction(function () use ($asset, $data) {
-            AssetMaintenance::create($data + ['asset_id' => $asset->id, 'reported_by' => Auth::guard('school')->id()]);
-            if (in_array($data['status'], ['scheduled', 'in_progress'], true)) {
-                $asset->update(['status' => 'under_maintenance']);
-            } elseif ($data['status'] === 'completed' && $asset->status === 'under_maintenance') {
-                $hasOpenWork = $asset->maintenance()->whereIn('status', ['scheduled', 'in_progress'])->exists();
-                if (! $hasOpenWork) {
-                    $asset->update(['status' => 'active']);
-                }
+            $lockedAsset = Asset::whereKey($asset->id)->lockForUpdate()->firstOrFail();
+            abort_if(in_array($lockedAsset->status, ['disposed', 'lost'], true), 422, 'Maintenance cannot be recorded for a disposed or lost asset.');
+
+            $maintenance = AssetMaintenance::create($data + ['asset_id' => $lockedAsset->id, 'reported_by' => Auth::guard('school')->id()]);
+            $hasOpenWork = $lockedAsset->maintenance()->whereIn('status', ['scheduled', 'in_progress'])->exists();
+
+            if ($hasOpenWork) {
+                $lockedAsset->update(['status' => 'under_maintenance']);
+            } elseif ($lockedAsset->status === 'under_maintenance') {
+                $lockedAsset->update(['status' => 'active']);
             }
-            $this->audit('asset.maintenance_recorded', 'asset', $asset->id, null, ['status' => $data['status'], 'cost' => $data['cost'] ?? 0]);
+
+            $this->audit('asset.maintenance_recorded', 'asset', $lockedAsset->id, null, [
+                'maintenance_id' => $maintenance->id,
+                'status' => $maintenance->status,
+                'cost' => $data['cost'] ?? 0,
+                'asset_status' => $lockedAsset->fresh()->status,
+            ]);
         });
         return $this->back($request, 'Maintenance record saved.');
     }
