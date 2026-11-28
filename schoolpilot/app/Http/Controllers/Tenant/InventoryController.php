@@ -175,13 +175,16 @@ class InventoryController extends Controller
             'status' => ['required', Rule::in(['approved', 'rejected'])],
             'decision_note' => ['nullable', 'string', 'max:2000'],
         ]);
-        abort_unless($purchaseRequest->status === 'pending', 422, 'This request has already been reviewed.');
         abort_if((int) $purchaseRequest->requested_by === (int) Auth::guard('school')->id(), 403, 'The requester cannot approve or reject their own purchase request.');
-        $purchaseRequest->update([
-            'status' => $data['status'], 'approved_by' => Auth::guard('school')->id(),
-            'approved_at' => now(), 'decision_note' => $data['decision_note'] ?? null,
-        ]);
-        $this->audit('purchase_request.' . $data['status'], 'purchase_request', $purchaseRequest->id, ['status' => 'pending'], ['status' => $data['status']]);
+        DB::transaction(function () use ($data, $purchaseRequest) {
+            $locked = PurchaseRequest::whereKey($purchaseRequest->id)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->status === 'pending', 422, 'This request has already been reviewed.');
+            $locked->update([
+                'status' => $data['status'], 'approved_by' => Auth::guard('school')->id(),
+                'approved_at' => now(), 'decision_note' => $data['decision_note'] ?? null,
+            ]);
+            $this->audit('purchase_request.' . $data['status'], 'purchase_request', $locked->id, ['status' => 'pending'], ['status' => $locked->status]);
+        });
         return $this->back($request, 'Purchase request ' . $data['status'] . '.');
     }
 
@@ -201,13 +204,16 @@ class InventoryController extends Controller
         if ($lines->isEmpty() || $lines->contains(fn ($line) => !isset($line['quantity_ordered'], $line['unit_cost']))) {
             throw ValidationException::withMessages(['items' => 'Add at least one item with a quantity and unit cost to the purchase order.']);
         }
-        if (!empty($data['purchase_request_id'])) {
-            $approved = PurchaseRequest::whereKey($data['purchase_request_id'])->where('status', 'approved')->exists();
-            if (!$approved) {
-                throw ValidationException::withMessages(['purchase_request_id' => 'Only an approved purchase request can be linked to an order.']);
-            }
-        }
         DB::transaction(function () use ($data, $lines) {
+            if (!empty($data['purchase_request_id'])) {
+                $request = PurchaseRequest::whereKey($data['purchase_request_id'])->lockForUpdate()->firstOrFail();
+                if ($request->status !== 'approved') {
+                    throw ValidationException::withMessages(['purchase_request_id' => 'Only an approved purchase request can be linked to an order.']);
+                }
+                if (PurchaseOrder::where('purchase_request_id', $request->id)->exists()) {
+                    throw ValidationException::withMessages(['purchase_request_id' => 'An order has already been created for this purchase request.']);
+                }
+            }
             $order = PurchaseOrder::create([
                 'order_no' => $this->number('PO'), 'supplier_id' => $data['supplier_id'],
                 'purchase_request_id' => $data['purchase_request_id'] ?? null,
