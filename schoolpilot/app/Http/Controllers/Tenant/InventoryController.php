@@ -235,11 +235,16 @@ class InventoryController extends Controller
             'received_at' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'items' => ['required', 'array', 'min:1'],
-            'items.*.quantity_received' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
+            'items.*.quantity_received' => ['nullable', 'numeric', 'min:0', 'max:999999999', 'decimal:0,2'],
         ]);
         DB::transaction(function () use ($data, $purchaseOrder) {
             $order = PurchaseOrder::with('items.item')->whereKey($purchaseOrder->id)->lockForUpdate()->firstOrFail();
             abort_if(in_array($order->status, ['received', 'cancelled'], true), 422, 'This order cannot receive more goods.');
+            $orderItemIds = $order->items->pluck('id')->map(fn ($id) => (string) $id)->all();
+            $submittedItemIds = array_map('strval', array_keys($data['items']));
+            $unexpectedItemIds = array_diff($submittedItemIds, $orderItemIds);
+            abort_if($unexpectedItemIds !== [], 422, 'Receipt contains items that do not belong to this purchase order.');
+
             $receipt = GoodsReceipt::create([
                 'purchase_order_id' => $order->id, 'received_by' => Auth::guard('school')->id(),
                 'receipt_no' => $this->number('GRN'), 'received_at' => $data['received_at'], 'notes' => $data['notes'] ?? null,
